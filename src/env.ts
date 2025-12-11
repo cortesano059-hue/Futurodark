@@ -1,12 +1,5 @@
 import { validateEnv } from "#base";
 import { z } from "zod";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { cwd } from "node:process";
-
-// #region agent log
-fetch('http://127.0.0.1:7242/ingest/546674be-faae-42e3-ad4a-2feced9a0111',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'env.ts:4',message:'env.ts module loading',data:{cwd:cwd(),envFileExists:existsSync(join(cwd(),'.env')),envFileAbsolute:join(cwd(),'.env')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-// #endregion
 
 export const env = validateEnv(z.object({
     // Discord Bot Configuration
@@ -20,7 +13,7 @@ export const env = validateEnv(z.object({
     DATABASE_NAME: z.string().optional(),
     
     // Webhook Logging (optional)
-    WEBHOOK_LOGS_URL: z.url().optional(),
+    WEBHOOK_LOGS_URL: z.preprocess((val) => (val === "" || val === undefined) ? undefined : val, z.url().optional()),
     DISCORD_LOG_WEBHOOK_ID: z.string().optional(),
     DISCORD_LOG_WEBHOOK_TOKEN: z.string().optional(),
 }));
