@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, CommandInteraction } from "discord.js";
 import safeReply from "@src/utils/safeReply";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
-import * as eco from "@economy";
+import eco from "@economy";
 import logger from "@src/utils/logger";
 import ms from "ms";
 

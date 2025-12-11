@@ -1,10 +1,12 @@
-import { 
-    EmbedBuilder, 
-    ActionRowBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
+import {
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
     StringSelectMenuBuilder,
-    ButtonInteraction
+    ButtonInteraction,
+    MessageActionRowComponentBuilder,
+    StringSelectMenuComponentBuilder,
 } from "discord.js";
 import eco from "@src/database/economy";
 import safeReply from "@src/utils/safeReply";
@@ -79,9 +81,9 @@ async function renderShop(interaction: ButtonInteraction, client: MyClient, guil
             }))
         );
 
-    const rowSelect = new ActionRowBuilder().addComponents(select);
+    const rowSelect = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
-    const rowButtons = new ActionRowBuilder().addComponents(
+    const rowButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId(`tienda_prev_${pageIndex}`)
             .setLabel("⬅️ Anterior")

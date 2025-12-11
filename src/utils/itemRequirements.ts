@@ -2,7 +2,7 @@
  * Sistema de verificación de requisitos estilo UnbelievaBoat
  */
 
-import * as eco from "@economy";
+import eco from "@economy";
 import { GuildMember } from "discord.js";
 
 interface Requirement {

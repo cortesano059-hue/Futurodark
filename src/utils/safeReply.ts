@@ -1,6 +1,6 @@
-import { Interaction, MessagePayload, InteractionReplyOptions } from 'discord.js';
+import { Interaction, InteractionReplyOptions, MessageFlags } from 'discord.js';
 
-type SafeReplyPayload = string | MessagePayload | InteractionReplyOptions;
+type SafeReplyPayload = string | InteractionReplyOptions;
 
 export default async function safeReply(interaction: Interaction, payload: SafeReplyPayload): Promise<void> {
     if (!payload) return;
@@ -14,7 +14,7 @@ export default async function safeReply(interaction: Interaction, payload: SafeR
     }
 
     if (data.ephemeral && !data.flags) {
-        data.flags = 64;
+        data.flags = MessageFlags.Ephemeral;
     }
 
     try {

@@ -6,7 +6,7 @@ import {
   StringSelectMenuBuilder,
   Client,
 } from "discord.js";
-import * as eco from "@src/database/economy";
+import eco from "@src/database/economy";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
 
 // CONFIGURACIÓN

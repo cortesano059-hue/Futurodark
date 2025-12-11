@@ -4,7 +4,7 @@ import {
   CommandInteraction,
 } from "discord.js";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
-import * as eco from "@economy";
+import eco from "@economy";
 import safeReply from "@src/utils/safeReply";
 
 export const data = new SlashCommandBuilder()

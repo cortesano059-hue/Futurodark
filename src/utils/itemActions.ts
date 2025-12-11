@@ -16,7 +16,7 @@
  */
 
 import safeReply from "@src/utils/safeReply";
-import * as eco from "@economy";
+import eco from "@economy";
 import { CommandInteraction } from "discord.js";
 
 interface ItemAction {

@@ -5,7 +5,7 @@ import {
   Client,
   Interaction,
 } from "discord.js";
-import * as eco from "@economy";
+import eco from "@economy";
 import safeReply from "@src/utils/safeReply";
 
 interface ShopItem {
