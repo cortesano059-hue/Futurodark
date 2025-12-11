@@ -1,0 +1,59 @@
+import {
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  CommandInteraction,
+} from "discord.js";
+import ThemedEmbed from "@src/utils/ThemedEmbed";
+import * as eco from "@economy";
+import safeReply from "@src/utils/safeReply";
+
+export const data = new SlashCommandBuilder()
+  .setName("addmoney")
+  .setDescription("Añadir dinero a un usuario (Admin).")
+  .addUserOption((o) =>
+    o.setName("usuario").setDescription("Usuario").setRequired(true)
+  )
+  .addIntegerOption((o) =>
+    o.setName("cantidad").setDescription("Cantidad").setRequired(true)
+  )
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+
+export async function execute(interaction: CommandInteraction): Promise<void> {
+  await interaction.deferReply({});
+  try {
+    const targetUser = interaction.options.getMember("usuario");
+    if (!targetUser)
+      return safeReply(
+        interaction,
+        ThemedEmbed.error("Error", "Usuario no encontrado.")
+      );
+
+    const amount = interaction.options.getInteger("cantidad", true);
+    if (amount <= 0)
+      return safeReply(
+        interaction,
+        ThemedEmbed.error("Error", "Cantidad inválida.")
+      );
+
+    await eco.addMoney(targetUser.id, interaction.guildId || "", amount);
+    const balance = await eco.getBalance(targetUser.id, interaction.guildId || "");
+
+    const embed = new ThemedEmbed(interaction)
+      .setTitle("💰 Dinero Añadido")
+      .setDescription(`Se han añadido **$${amount}** a ${targetUser.user.tag}.`)
+      .addFields(
+        { name: "Dinero en Mano", value: `$${balance.money}`, inline: true },
+        { name: "Dinero en Banco", value: `$${balance.bank}`, inline: true }
+      )
+      .setThumbnail(targetUser.user.displayAvatarURL({ dynamic: true }))
+      .setColor("#2ecc71");
+
+    return safeReply(interaction, { embeds: [embed] });
+  } catch (err) {
+    console.error("❌ ERROR EN COMANDO addmoney.ts:", err);
+    return safeReply(
+      interaction,
+      ThemedEmbed.error("Error", "No se pudo añadir el dinero.")
+    );
+  }
+}
