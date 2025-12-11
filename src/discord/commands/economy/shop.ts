@@ -12,7 +12,7 @@ const command = {
             .setDescription("Pulsa el botón de abajo para abrir la tienda.")
             .setColor("#2b2d31");
 
-        const button = new ActionRowBuilder().addComponents(
+        const button = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
                 .setCustomId("shop_open")
                 .setLabel("🛍️ Abrir tienda")

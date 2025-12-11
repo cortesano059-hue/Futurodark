@@ -17,7 +17,7 @@
 
 import safeReply from "@src/utils/safeReply";
 import eco from "@economy";
-import { CommandInteraction } from "discord.js";
+import { CommandInteraction, GuildMember } from "discord.js";
 
 interface ItemAction {
   type: string;
@@ -66,7 +66,7 @@ export async function executeActions(
 ): Promise<ActionResults> {
   const guildId = interaction.guildId || "";
   const userId = opts.targetUserId || interaction.user.id;
-  const member = interaction.guild?.members.cache.get(userId) || interaction.member;
+  const member = (interaction.guild?.members.cache.get(userId) as GuildMember | undefined) || undefined;
   const qty = Number(opts.qty || 1);
 
   const results: ActionResults = {

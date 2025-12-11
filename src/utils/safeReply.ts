@@ -2,15 +2,23 @@ import { Interaction, InteractionReplyOptions, MessageFlags } from 'discord.js';
 
 type SafeReplyPayload = string | InteractionReplyOptions;
 
-export default async function safeReply(interaction: Interaction, payload: SafeReplyPayload): Promise<void> {
+export default async function safeReply(
+  interaction: Interaction,
+  payload: SafeReplyPayload,
+  ephemeralOverride?: boolean
+): Promise<any> {
     if (!payload) return;
 
     let data: InteractionReplyOptions;
     if (typeof payload === 'string') {
-        data = { content: payload, ephemeral: true };
+        data = { content: payload, ephemeral: ephemeralOverride ?? true };
     } else {
         data = { ...payload };
-        if (data.ephemeral === undefined) data.ephemeral = true;
+        if (ephemeralOverride !== undefined) {
+            data.ephemeral = ephemeralOverride;
+        } else if (data.ephemeral === undefined) {
+            data.ephemeral = true;
+        }
     }
 
     if (data.ephemeral && !data.flags) {

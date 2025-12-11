@@ -68,7 +68,7 @@ const command = {
             };
 
             const getButtons = (pageIndex) => {
-                return new ActionRowBuilder().addComponents(
+                return new ActionRowBuilder<ButtonBuilder>().addComponents(
                     new ButtonBuilder()
                         .setCustomId("prev_page")
                         .setLabel("⬅️")
@@ -112,7 +112,7 @@ const command = {
 
                 msg.edit({
                     components: [
-                        new ActionRowBuilder().addComponents(
+                        new ActionRowBuilder<ButtonBuilder>().addComponents(
                             new ButtonBuilder()
                                 .setCustomId("disabled")
                                 .setLabel("⏱️ Tiempo expirado")

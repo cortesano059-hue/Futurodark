@@ -273,12 +273,12 @@ async function disableComponents(interaction: any): Promise<void> {
     const rows = interaction.message.components ?? [];
     const disabledRows = rows.map((row: any) => {
         const newRow = ActionRowBuilder.from(row);
-        newRow.components = newRow.components.map((c: any) => {
-            const comp = c;
-            comp.setDisabled(true);
-            return comp;
+        const rebuilt = new ActionRowBuilder();
+        newRow.components.forEach((c: any) => {
+            const clone = c.setDisabled(true);
+            rebuilt.addComponents(clone);
         });
-        return newRow;
+        return rebuilt;
     });
 
     try {

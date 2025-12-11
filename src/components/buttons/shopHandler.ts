@@ -5,8 +5,6 @@ import {
     ButtonStyle,
     StringSelectMenuBuilder,
     ButtonInteraction,
-    MessageActionRowComponentBuilder,
-    StringSelectMenuComponentBuilder,
 } from "discord.js";
 import eco from "@src/database/economy";
 import safeReply from "@src/utils/safeReply";
