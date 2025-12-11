@@ -11,8 +11,7 @@ import Emojis from '@src/config/EmojiList';
 import Categories from '@src/config/categories';
 import fs from 'fs';
 import path from 'path';
-import pkg from '../../../package.json' with { type: "json" };
-const { version } = pkg;
+const { version } = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
 
 // Banners
 const IMAGEN_SUPERIOR = 'https://cdn.discordapp.com/attachments/1438575452288581632/1445212702690508851/comandos.png';

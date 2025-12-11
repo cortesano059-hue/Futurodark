@@ -42,7 +42,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         { name: "Dinero en Mano", value: `$${balance.money}`, inline: true },
         { name: "Dinero en Banco", value: `$${balance.bank}`, inline: true }
       )
-      .setThumbnail((member || targetUser).displayAvatarURL?.({ dynamic: true }) ?? targetUser.displayAvatarURL())
+      .setThumbnail((member || targetUser).displayAvatarURL?.() ?? targetUser.displayAvatarURL())
       .setColor("#2ecc71");
 
     return safeReply(interaction, { embeds: [embed] });
@@ -50,7 +50,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     console.error("❌ ERROR EN COMANDO addmoney.ts:", err);
     return safeReply(
       interaction,
-      ThemedEmbed.error("Error", "No se pudo añadir el dinero.")
+      { embeds: [ThemedEmbed.error("Error", "No se pudo añadir el dinero.")] }
     );
   }
 }
