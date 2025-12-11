@@ -15,7 +15,6 @@ import {
 } from "discord.js";
 import safeReply from "@safeReply";
 import eco from "@economy";
-import 'dotenv/config';
 import MyClient from "@structures/MyClient.js";
 
 const PANEL_TIMEOUT = 1000 * 60 * 3;

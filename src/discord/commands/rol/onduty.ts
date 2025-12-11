@@ -3,7 +3,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import { IncomeRole, DutyStatus } from '@src/database/mongodb';
 import safeReply from '@src/utils/safeReply';
 
-const command = {
+export default {
   data: new SlashCommandBuilder()
     .setName("onduty")
     .setDescription("Entrar en servicio y comenzar a recibir salario."),

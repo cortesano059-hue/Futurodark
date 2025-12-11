@@ -4,7 +4,7 @@ import safeReply from '@src/utils/safeReply';
 import ThemedEmbed from '@src/utils/ThemedEmbed';
 import eco from '@economy';
 
-const command = {
+export default {
     data: new SlashCommandBuilder()
         .setName('entorno')
         .setDescription('Envía un mensaje de entorno global.')

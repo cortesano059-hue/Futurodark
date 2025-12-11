@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { DutyStatus, IncomeRole } from '@src/database/mongodb';
 import safeReply from '@src/utils/safeReply';
 
-const command = {
+export default {
     data: new SlashCommandBuilder()
         .setName("dutyinfo")
         .setDescription("Muestra qué usuarios están actualmente en servicio."),

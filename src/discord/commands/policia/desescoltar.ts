@@ -3,7 +3,7 @@ import eco from "@economy";
 import safeReply from "@safeReply";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
 
-const command = {
+export default {
     data: new SlashCommandBuilder()
         .setName('desescoltar')
         .setDescription('Detiene la escolta de un usuario.')

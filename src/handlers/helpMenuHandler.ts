@@ -9,10 +9,15 @@ import {
 } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
 import Emojis from "@src/config/EmojiList";
 import Categories from "@src/config/categories";
 import MyClient from "../structures/MyClient.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const IMAGEN_SUPERIOR =
     "https://cdn.discordapp.com/attachments/1438575452288581632/1445212702690508851/comandos.png?ex=6932d277&is=693180f7&hm=30874b503c99f89848218bff488491b3691c40c9cffd443ebc6456e7c86c03b5&";

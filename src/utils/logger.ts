@@ -1,8 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { WebhookClient, EmbedBuilder } from 'discord.js';
 import Transaction from '@transactionModel';
 import { env } from '#env';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const LOG_FILE = path.join(__dirname, 'bot.log');
 const ERROR_FILE = path.join(__dirname, 'error.log');

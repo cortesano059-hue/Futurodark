@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import safeReply from '@src/utils/safeReply';
 import ThemedEmbed from '@src/utils/ThemedEmbed';
 
-const command = {
+export default {
     data: new SlashCommandBuilder()
         .setName('do')
         .setDescription('Do.')

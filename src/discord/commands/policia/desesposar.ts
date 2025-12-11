@@ -3,7 +3,7 @@ import safeReply from "@src/utils/safeReply";
 import eco from "@economy";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
 
-const command = {
+export default {
     data: new SlashCommandBuilder()
         .setName('desesposar')
         .setDescription('Quita las esposas a un usuario.')
