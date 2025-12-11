@@ -1,48 +1,71 @@
+import { createResponder, ResponderType } from "#base";
 import {
     EmbedBuilder,
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
     StringSelectMenuBuilder,
-    ButtonInteraction,
 } from "discord.js";
-import eco from "@src/database/economy";
+import eco from "@economy";
 import safeReply from "@src/utils/safeReply";
-import MyClient from "@structures/MyClient.js";
 
 const ITEMS_PER_PAGE = 8;
 
-export default {
+// Handler para shop_open
+createResponder({
     customId: "shop_open",
-
-    check: (id: string): boolean =>
-        id === "shop_open" ||
-        id === "shop_close" ||
-        id.startsWith("tienda_prev") ||
-        id.startsWith("tienda_next"),
-
-    async execute(interaction: ButtonInteraction, client: MyClient): Promise<void> {
+    types: [ResponderType.Button],
+    async run(interaction) {
         const guildId = interaction.guild!.id;
         const userId = interaction.user.id;
+        await renderShop(interaction, guildId, userId, 0);
+    },
+});
 
-        let page = 0;
+// Handler para shop_close
+createResponder({
+    customId: "shop_close",
+    types: [ResponderType.Button],
+    async run(interaction) {
+        await interaction.deferUpdate();
+        await interaction.deleteReply().catch(() => {});
+    },
+});
 
-        if (interaction.customId.startsWith("tienda_prev_"))
-            page = parseInt(interaction.customId.split("_")[2]) - 1;
+// Handler para tienda_prev_* (paginación anterior)
+createResponder({
+    customId: "tienda_prev/:page",
+    types: [ResponderType.Button],
+    parse: ({ page }) => ({ page: parseInt(page) }),
+    async run(interaction, { page }) {
+        const guildId = interaction.guild!.id;
+        const userId = interaction.user.id;
+        await renderShop(interaction, guildId, userId, page - 1);
+    },
+});
 
-        if (interaction.customId.startsWith("tienda_next_"))
-            page = parseInt(interaction.customId.split("_")[2]) + 1;
+// Handler para tienda_next_* (paginación siguiente)
+createResponder({
+    customId: "tienda_next/:page",
+    types: [ResponderType.Button],
+    parse: ({ page }) => ({ page: parseInt(page) }),
+    async run(interaction, { page }) {
+        const guildId = interaction.guild!.id;
+        const userId = interaction.user.id;
+        await renderShop(interaction, guildId, userId, page + 1);
+    },
+});
 
-        return renderShop(interaction, client, guildId, userId, page);
-    }
-};
-
-async function renderShop(interaction: ButtonInteraction, client: MyClient, guildId: string, userId: string, pageIndex: number = 0): Promise<void> {
+async function renderShop(
+    interaction: any,
+    guildId: string,
+    userId: string,
+    pageIndex: number = 0
+): Promise<void> {
     let items = await eco.getShop(guildId);
     items = items.filter((i: any) => i.price !== 0);
 
     const totalPages = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
-
     pageIndex = Math.max(0, Math.min(totalPages - 1, pageIndex));
 
     const start = pageIndex * ITEMS_PER_PAGE;
@@ -55,7 +78,7 @@ async function renderShop(interaction: ButtonInteraction, client: MyClient, guil
     const embed = new EmbedBuilder()
         .setTitle(`🛒 Tienda (Página ${pageIndex + 1}/${totalPages})`)
         .setColor("#2b2d31" as any)
-        .setThumbnail(client.user!.displayAvatarURL())
+        .setThumbnail(interaction.client.user!.displayAvatarURL())
         .setImage("https://cdn.discordapp.com/attachments/1438575452288581632/1445213527617966201/Tienda_abajo.png")
         .setDescription(
             pageItems.length
@@ -104,7 +127,7 @@ async function renderShop(interaction: ButtonInteraction, client: MyClient, guil
         return interaction.editReply({
             embeds: [embedBanner, embed],
             components: [rowSelect, rowButtons]
-        }) as any;
+        });
     }
 
     return safeReply(interaction, {

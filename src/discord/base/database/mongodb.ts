@@ -1,8 +1,10 @@
 import mongoose from "mongoose";
+import { env } from "#env";
 
 if (process.env.RUNNING_BOT === "true") {
     mongoose
-        .connect(process.env.MONGO_URI!, {
+        .connect(env.MONGO_URI, {
+            dbName: env.DATABASE_NAME,
             serverSelectionTimeoutMS: 30000,
             socketTimeoutMS: 45000,
         })

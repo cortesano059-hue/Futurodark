@@ -1,3 +1,4 @@
+import { createEvent } from "#base";
 import { Events } from "discord.js";
 import safeReply from "@src/utils/safeReply";
 import logger from "@src/utils/logger";
@@ -5,12 +6,16 @@ import handleHelpMenu from "@src/handlers/helpMenuHandler";
 import backpackAutocomplete from "@src/handlers/backpackAutocomplete";
 import MyClient from "../structures/MyClient.js";
 
-export default {
-    name: Events.InteractionCreate,
-
-    async execute(interaction: any, client: MyClient): Promise<void> {
+// Este evento maneja solo casos especiales que Constatic no cubre automáticamente
+// Los comandos, botones y selectMenus normales son manejados por Constatic en bootstrap.ts
+createEvent({
+    name: "interactionCreateCustom",
+    event: Events.InteractionCreate,
+    async run(interaction) {
         try {
+            const client = interaction.client as MyClient;
 
+            // Autocomplete personalizado para backpack
             if (interaction.isAutocomplete()) {
                 try {
                     return backpackAutocomplete.execute(interaction, client);
@@ -20,89 +25,24 @@ export default {
                 }
             }
 
-            if (interaction.isChatInputCommand()) {
-                const command = client.commands.get(interaction.commandName);
-
-                if (!command) {
-                    logger.warn(`⚠️ Comando no encontrado: ${interaction.commandName}`);
-                    return;
-                }
-
-                try {
-                    await command.execute(interaction, client);
-                } catch (err) {
-                    logger.error(`🔴 Error ejecutando /${interaction.commandName}:`, err);
-
-                    await safeReply(interaction, "❌ Error ejecutando este comando.");
-                }
-                return;
+            // Manejo especial para el menú de ayuda (help-page-* y help-category-*)
+            if (interaction.isButton() && interaction.customId.startsWith("help-page-")) {
+                return handleHelpMenu(interaction, client);
             }
 
-            if (interaction.isButton()) {
-
-                if (interaction.customId.startsWith("help-page-")) {
-                    return handleHelpMenu(interaction, client);
-                }
-
-                let button = client.buttons.get(interaction.customId);
-
-                if (!button) {
-                    button = client.buttons.find((btn: any) => btn.check && btn.check(interaction.customId));
-                }
-
-                if (!button) return;
-
-                try {
-                    await button.execute(interaction, client);
-                } catch (err) {
-                    logger.error(`🔴 Error en botón ${interaction.customId}:`, err);
-                    await safeReply(interaction, "❌ Error al procesar el botón.");
-                }
-
-                return;
+            if (interaction.isStringSelectMenu() && interaction.customId.startsWith("help-category-")) {
+                return handleHelpMenu(interaction, client);
             }
 
-            if (interaction.isStringSelectMenu()) {
-
-                if (interaction.customId.startsWith("help-category-")) {
-                    return handleHelpMenu(interaction, client);
-                }
-
-                let menu = client.selectMenus.get(interaction.customId);
-
-                if (!menu) {
-                    menu = client.selectMenus.find((m: any) => m.check && m.check(interaction.customId));
-                }
-
-                if (!menu) return;
-
-                try {
-                    await menu.execute(interaction, client);
-                } catch (err) {
-                    logger.error(`🔴 Error en select menu ${interaction.customId}:`, err);
-                    await safeReply(interaction, "❌ Error al procesar el menú.");
-                }
-
-                return;
-            }
-
-            if (interaction.isModalSubmit()) {
-                const modal = client.modals.get(interaction.customId);
-                if (!modal) return;
-
-                try {
-                    await modal.execute(interaction, client);
-                } catch (err) {
-                    logger.error(`🔴 Error en modal ${interaction.customId}:`, err);
-                    await safeReply(interaction, "❌ Error al procesar el modal.");
-                }
-            }
+            // El resto de interacciones (comandos, botones, selectMenus, modals) 
+            // son manejados automáticamente por Constatic en bootstrap.ts
+            // No necesitamos código adicional aquí
 
         } catch (err) {
             logger.error("🔴 Error crítico en InteractionCreate:", err);
 
             try {
-                if (!interaction.replied && !interaction.deferred) {
+                if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
                     await safeReply(interaction, "❌ Error crítico en la interacción.");
                 }
             } catch {
@@ -110,5 +50,4 @@ export default {
             }
         }
     }
-};
-
+});

@@ -1,4 +1,4 @@
-// src/components/shop/shopPayload.ts
+// src/discord/responders/shop/shopPayload.ts
 import {
   StringSelectMenuBuilder,
   ActionRowBuilder,
@@ -19,6 +19,11 @@ interface ShopPayloadOptions {
   placeholder?: string;
 }
 
+/**
+ * Función auxiliar para generar el payload del menú de selección de la tienda
+ * @deprecated Esta función puede no ser necesaria si ya usas generateShopEmbed.ts
+ * Se mantiene por compatibilidad si algún código la está usando
+ */
 export async function shopPayload(
   interaction: Interaction,
   shopItems: ShopItem[],
@@ -37,8 +42,8 @@ export async function shopPayload(
     }));
 
     const menu = new StringSelectMenuBuilder()
-      .setCustomId("shop_select_item")
-      .setPlaceholder("Selecciona un item para comprar")
+      .setCustomId(options?.customId || "shop_select_item")
+      .setPlaceholder(options?.placeholder || "Selecciona un item para comprar")
       .addOptions(selectOptions);
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -63,3 +68,4 @@ export async function shopPayload(
 }
 
 export default shopPayload;
+

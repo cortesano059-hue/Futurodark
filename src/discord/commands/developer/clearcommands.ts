@@ -1,24 +1,22 @@
-// src/commands/developer/clearcommands.js
-import { SlashCommandBuilder, REST, Routes, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, REST, Routes, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import safeReply from '@src/utils/safeReply';
-import 'dotenv/config';
+import { env } from '#env';
 
 const command = {
     data: new SlashCommandBuilder()
         .setName("clearcommands")
         .setDescription("Elimina todos los comandos globales (Owner Only)."),
 
-    async execute(interaction) {
-
+    async execute(interaction: ChatInputCommandInteraction): Promise<void> {
         // OWNER CHECK
-        if (interaction.user.id !== process.env.OWNER_ID) {
+        if (interaction.user.id !== env.OWNER_ID) {
             return safeReply(interaction, "❌ Solo el owner del bot puede usar este comando.");
         }
 
         await interaction.deferReply({ ephemeral: true });
 
         const client = interaction.client;
-        const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+        const rest = new REST({ version: "10" }).setToken(env.BOT_TOKEN);
 
         try {
             await rest.put(

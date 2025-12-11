@@ -1,7 +1,7 @@
 import { Events, Routes, REST } from "discord.js";
 import logger from "@src/utils/logger";
 import { DutyStatus, IncomeRole, User } from "@src/database/mongodb";
-import 'dotenv/config';
+import { env } from "#env";
 import MyClient from "../structures/MyClient.js";
 
 export default {
@@ -18,7 +18,7 @@ export default {
         } else {
             logger.info("📝 Registrando comandos GLOBAL y GUILD...");
 
-            const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN!);
+            const rest = new REST({ version: "10" }).setToken(env.BOT_TOKEN);
 
             try {
                 await rest.put(
@@ -30,17 +30,19 @@ export default {
                 logger.error("❌ Error registrando comandos GLOBAL:", err);
             }
 
-            try {
-                await rest.put(
-                    Routes.applicationGuildCommands(
-                        client.user!.id,
-                        process.env.GUILD_ID!
-                    ),
-                    { body: commands }
-                );
-                logger.info(`🏠 Registrados ${commands.length} comandos en la GUILD.`);
-            } catch (err) {
-                logger.error("❌ Error registrando comandos GUILD:", err);
+            if (env.GUILD_ID) {
+                try {
+                    await rest.put(
+                        Routes.applicationGuildCommands(
+                            client.user!.id,
+                            env.GUILD_ID
+                        ),
+                        { body: commands }
+                    );
+                    logger.info(`🏠 Registrados ${commands.length} comandos en la GUILD.`);
+                } catch (err) {
+                    logger.error("❌ Error registrando comandos GUILD:", err);
+                }
             }
 
             logger.info("📌 Registro automático completado.");

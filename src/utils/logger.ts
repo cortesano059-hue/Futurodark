@@ -2,12 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { WebhookClient, EmbedBuilder } from 'discord.js';
 import Transaction from '@transactionModel';
+import { env } from '#env';
 
 const LOG_FILE = path.join(__dirname, 'bot.log');
 const ERROR_FILE = path.join(__dirname, 'error.log');
 
-const WEBHOOK_ID = process.env.DISCORD_LOG_WEBHOOK_ID;
-const WEBHOOK_TOKEN = process.env.DISCORD_LOG_WEBHOOK_TOKEN;
+const WEBHOOK_ID = env.DISCORD_LOG_WEBHOOK_ID;
+const WEBHOOK_TOKEN = env.DISCORD_LOG_WEBHOOK_TOKEN;
 
 const LOG_IMAGE = 'https://cdn.discordapp.com/attachments/1438575452288581632/1445213520194179163/Help__Comandos.png?ex=69303039&is=692edeb9&hm=c3449699c25fcab6a696f691bb6bca7b75ffe357395b493a26e4a913cb01226d&';
 

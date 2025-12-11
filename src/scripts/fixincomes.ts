@@ -1,15 +1,12 @@
-import "dotenv/config";
 import mongoose from "mongoose";
 import { IncomeRole } from "../discord/base/database/mongodb.js";
-
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI no está definido.");
-  process.exit(1);
-}
+import { env } from "#env";
 
 (async () => {
   console.log("🔧 Conectando a Mongo...");
-  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connect(env.MONGO_URI, {
+    dbName: env.DATABASE_NAME
+  });
   console.log("✅ Conectado.");
 
   const incomes = await IncomeRole.find({});

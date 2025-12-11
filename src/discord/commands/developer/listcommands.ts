@@ -1,9 +1,10 @@
-import { SlashCommandBuilder, PermissionFlagsBits, REST, Routes } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, REST, Routes, ChatInputCommandInteraction } from 'discord.js';
 import safeReply from '@src/utils/safeReply';
+import { env } from '#env';
 
 // Función para dividir texto en partes de máximo 1024 chars
-function chunkText(text, max = 1024) {
-    const chunks = [];
+function chunkText(text: string, max = 1024): string[] {
+    const chunks: string[] = [];
     while (text.length > max) {
         chunks.push(text.slice(0, max));
         text = text.slice(max);
@@ -18,9 +19,9 @@ const command = {
         .setDescription("Muestra solo los comandos globales y sus IDs.")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-    async execute(interaction) {
-        const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-        const appId = process.env.CLIENT_ID;
+    async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+        const rest = new REST({ version: "10" }).setToken(env.BOT_TOKEN);
+        const appId = env.CLIENT_ID;
 
         try {
             // --- SOLO globales ---

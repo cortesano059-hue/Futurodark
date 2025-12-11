@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import safeReply from '@src/utils/safeReply';
 import ThemedEmbed from '@src/utils/ThemedEmbed';
 
@@ -9,8 +9,8 @@ const command = {
         .addStringOption(o => o.setName('mensaje').setDescription('Texto').setRequired(true))
         .addAttachmentOption(o => o.setName('imagen').setDescription('Imagen opcional')),
 
-    async execute(interaction) {
-        await interaction.deferReply({ });
+    async execute(interaction: ChatInputCommandInteraction) {
+        await interaction.deferReply();
 
         try {
             const text = interaction.options.getString('mensaje');
@@ -25,7 +25,7 @@ const command = {
 
             if (img) embed.setImage(img.url);
 
-            await safeReply(interaction, { embeds: [embed] });
+            await safeReply(interaction, { embeds: [embed] }, false);
         } catch (err) {
             console.error('❌ ERROR en twitter.js:', err);
             await safeReply(interaction, { content: '❌ Ocurrió un error al publicar el tweet.' });
@@ -33,4 +33,4 @@ const command = {
     }
 };
 
-
+export default command;
