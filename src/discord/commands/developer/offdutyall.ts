@@ -19,11 +19,12 @@ const command = {
       return safeReply(interaction, "⚠️ No hay usuarios en servicio.");
     }
 
-    const now = new Date();
+    const now = Date.now();
     let results = [];
 
     for (const status of allDuty) {
-      const minutesWorked = Math.floor((now - status.startTime) / 60000);
+      const start = new Date(status.startTime).getTime();
+      const minutesWorked = Math.floor((now - start) / 60000);
 
       if (minutesWorked < 10) {
         // No paga, estuvo poco

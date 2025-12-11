@@ -4,7 +4,7 @@ import ThemedEmbed from "@src/utils/ThemedEmbed";
 import eco from "@economy";
 import ms from "ms";
 import { getEconomyConfig } from "@economyConfig";
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 const { work: workConfig } = getEconomyConfig();
 const COOLDOWN = workConfig.cooldown;
@@ -34,7 +34,8 @@ export default {
                 .setColor("Red" as any)
                 .setDescription(`Podrás volver a trabajar **en ${formatted}**.`);
 
-            return interaction.editReply({ embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
+            return;
         }
 
         const job = jobs[Math.floor(Math.random() * jobs.length)];
@@ -48,7 +49,8 @@ export default {
             .setColor("Green" as any)
             .setDescription(`${job.message} **${reward}$** 💰`);
 
-        return interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
+        return;
     },
 };
 

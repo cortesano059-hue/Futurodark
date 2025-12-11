@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import mongoose from "mongoose";
 import safeReply from "@src/utils/safeReply";
 import Embed from "@src/utils/ThemedEmbed";
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 export default {
     data: new SlashCommandBuilder()

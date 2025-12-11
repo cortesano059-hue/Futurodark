@@ -228,7 +228,7 @@ const command = {
                 name: nombre,
                 emoji,
                 description: descripcion,
-                capacity
+                capacity: capacidad
             });
 
             await bp.save();

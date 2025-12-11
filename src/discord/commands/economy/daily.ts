@@ -3,7 +3,7 @@ import ThemedEmbed from "@src/utils/ThemedEmbed";
 import eco from '@economy';
 import safeReply from "@src/utils/safeReply";
 import { getEconomyConfig } from "@economyConfig";
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 const { daily: dailyConfig } = getEconomyConfig();
 const COOLDOWN_TIME = dailyConfig.cooldown;

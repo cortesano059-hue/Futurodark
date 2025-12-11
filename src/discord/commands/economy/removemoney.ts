@@ -21,12 +21,12 @@ try {
                 const targetUser = member?.user || interaction.options.getUser('usuario');
 
                 if (!targetUser) {
-                    return await safeReply(interaction, ThemedEmbed.error('Error', 'Usuario no encontrado.'));
+                    return await safeReply(interaction, { embeds: [ThemedEmbed.error('Error', 'Usuario no encontrado.')] });
                 }
 
                 const amount = interaction.options.getInteger('cantidad');
                 if (amount <= 0) {
-                    return await safeReply(interaction, ThemedEmbed.error('Error', 'Cantidad inválida.'));
+                    return await safeReply(interaction, { embeds: [ThemedEmbed.error('Error', 'Cantidad inválida.')] });
                 }
 
                 // Retirar dinero
@@ -39,13 +39,13 @@ try {
                     .setTitle('💸 Dinero Retirado')
                     .setColor('#e74c3c')
                     .setDescription(`Se han quitado **$${amount}** a **${targetUser.tag}**.\n` +
-                                    `💰 Balance actualizado: **$${balance.balance}** (Banco: **${balance.bank}**)`);
+                                    `💰 Balance actualizado: **$${balance.money}** (Banco: **${balance.bank}**)`);
 
                 return await safeReply(interaction, { embeds: [embed] });
 
             } catch (err) {
                 console.error('❌ ERROR al ejecutar removemoney:', err);
-                return await safeReply(interaction, ThemedEmbed.error('Error', 'No se pudo retirar el dinero.'));
+                return await safeReply(interaction, { embeds: [ThemedEmbed.error('Error', 'No se pudo retirar el dinero.')] });
             }
         }
     };

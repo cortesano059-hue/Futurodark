@@ -16,7 +16,7 @@ import {
 import safeReply from "@safeReply";
 import eco from "@economy";
 import 'dotenv/config';
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 const PANEL_TIMEOUT = 1000 * 60 * 3;
 
@@ -465,7 +465,7 @@ export default {
               }
             } else if (pc.customId === "p_emoji") {
               const modal = new ModalBuilder().setCustomId("modal_emoji").setTitle("Emoji");
-              modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("emoji").setLabel("Emoji o texto").setStyle(TextInputStyle.Short).setRequired(true).setValue(draft.emoji || "📦")));
+              modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId("emoji").setLabel("Emoji o texto").setStyle(TextInputStyle.Short).setRequired(true).setValue(draft.emoji || "📦")));
               await interaction.showModal(modal);
               const mod = await interaction.awaitModalSubmit({ time: 60_000, filter: (m: any) => m.user.id === interaction.user.id }).catch(()=>null);
               if (mod) {
@@ -475,7 +475,7 @@ export default {
                 await interaction.editReply({ embeds: [makeEmbed()], components: [rowMain, rowMain2] }).catch(()=>{});
               }
             } else if (pc.customId === "p_flags") {
-              const flagsRow = new ActionRowBuilder().addComponents(
+              const flagsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
                 new ButtonBuilder().setCustomId("f_inv").setLabel(`Invent: ${draft.inventory ? "✔" : "✖"}`).setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder().setCustomId("f_use").setLabel(`Usable: ${draft.usable ? "✔" : "✖"}`).setStyle(ButtonStyle.Secondary),
                 new ButtonBuilder().setCustomId("f_sell").setLabel(`Vendible: ${draft.sellable ? "✔" : "✖"}`).setStyle(ButtonStyle.Secondary),
@@ -494,8 +494,8 @@ export default {
             } else if (pc.customId === "p_stock") {
               const modal = new ModalBuilder().setCustomId("modal_stock").setTitle("Stock y tiempo");
               modal.addComponents(
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("stock").setLabel("Stock (-1 ilimitado)").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(draft.stock))),
-                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("tlim").setLabel("Tiempo límite ms (0 infinito)").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(draft.timeLimit)))
+                new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId("stock").setLabel("Stock (-1 ilimitado)").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(draft.stock))),
+                new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId("tlim").setLabel("Tiempo límite ms (0 infinito)").setStyle(TextInputStyle.Short).setRequired(true).setValue(String(draft.timeLimit)))
               );
               await interaction.showModal(modal);
               const mod = await interaction.awaitModalSubmit({ time: 60_000, filter: (m: any) => m.user.id === interaction.user.id }).catch(()=>null);

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import safeReply from "@src/utils/safeReply";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
 import eco from "@economy";
@@ -12,7 +12,7 @@ export const data = new SlashCommandBuilder()
     .setName("basura")
     .setDescription("Buscar en la basura.");
 
-export async function execute(interaction: CommandInteraction): Promise<void> {
+export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
         const userId = interaction.user.id;
         const guildId = interaction.guild.id;
         const now = Date.now();
@@ -39,12 +39,14 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
             if (roll < 0.05) {
                 let bottle = await eco.getItemByName(guildId, BROKEN_BOTTLE);
                 if (!bottle) {
-                    bottle = await eco.createItem(guildId, BROKEN_BOTTLE, {
-                        description: "Una botella rota. Cuidado con los cortes.",
-                        price: 1000,
-                        type: "trash",
-                        data: { broken: true }
-                    });
+                    bottle = await eco.createItem(
+                        guildId,
+                        BROKEN_BOTTLE,
+                        1000,
+                        "Una botella rota. Cuidado con los cortes.",
+                        "🍾",
+                        { type: "trash", data: { broken: true } }
+                    );
                 }
 
                 await eco.addToInventory(userId, guildId, bottle._id, 1);

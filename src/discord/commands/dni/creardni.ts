@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import safeReply from "@src/utils/safeReply";
 import { Dni } from "@database/mongodb";
 
@@ -11,7 +11,7 @@ export const data = new SlashCommandBuilder()
     .addStringOption((option: any) => option.setName('nacionalidad').setDescription('Nacionalidad').setRequired(true))
     .addStringOption((option: any) => option.setName('psid').setDescription('ID de PlayStation').setRequired(true));
 
-export async function execute(interaction: CommandInteraction): Promise<void> {
+export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
         await interaction.deferReply({ });
         const { options, user, guild } = interaction;
 

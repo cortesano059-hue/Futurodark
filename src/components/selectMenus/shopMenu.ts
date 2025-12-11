@@ -1,7 +1,7 @@
 import { StringSelectMenuInteraction } from "discord.js";
 import eco from "@economy";
 import safeReply from "@safeReply";
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 export default {
     customId: "tienda_buy",

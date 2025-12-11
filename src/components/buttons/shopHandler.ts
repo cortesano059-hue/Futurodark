@@ -8,7 +8,7 @@ import {
 } from "discord.js";
 import eco from "@src/database/economy";
 import safeReply from "@src/utils/safeReply";
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 const ITEMS_PER_PAGE = 8;
 

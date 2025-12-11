@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction, StringSelectMenuOptionBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, StringSelectMenuOptionBuilder } from 'discord.js';
 import safeReply from "@src/utils/safeReply";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
 
@@ -10,7 +10,7 @@ export const data = new SlashCommandBuilder()
         .setDescription('Contenido')
         .setRequired(true));
 
-export async function execute(interaction: CommandInteraction): Promise<void> {
+export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
         await interaction.deferReply({ });
 
         try {

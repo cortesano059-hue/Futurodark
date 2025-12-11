@@ -1,7 +1,7 @@
 import {
   SlashCommandBuilder,
   PermissionFlagsBits,
-  CommandInteraction,
+  ChatInputCommandInteraction,
 } from "discord.js";
 import ThemedEmbed from "@src/utils/ThemedEmbed";
 import eco from "@economy";
@@ -18,34 +18,31 @@ export const data = new SlashCommandBuilder()
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
-export async function execute(interaction: CommandInteraction): Promise<void> {
+export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   await interaction.deferReply({});
   try {
-    const targetUser = interaction.options.getMember("usuario");
-    if (!targetUser)
-      return safeReply(
-        interaction,
-        ThemedEmbed.error("Error", "Usuario no encontrado.")
-      );
+    const targetUser = interaction.options.getUser("usuario", true);
+    const guildId = interaction.guildId || "";
+    const member = interaction.guild?.members.cache.get(targetUser.id);
 
     const amount = interaction.options.getInteger("cantidad", true);
     if (amount <= 0)
       return safeReply(
         interaction,
-        ThemedEmbed.error("Error", "Cantidad inválida.")
+        { embeds: [ThemedEmbed.error("Error", "Cantidad inválida.")] }
       );
 
-    await eco.addMoney(targetUser.id, interaction.guildId || "", amount);
-    const balance = await eco.getBalance(targetUser.id, interaction.guildId || "");
+    await eco.addMoney(targetUser.id, guildId, amount);
+    const balance = await eco.getBalance(targetUser.id, guildId);
 
     const embed = new ThemedEmbed(interaction)
       .setTitle("💰 Dinero Añadido")
-      .setDescription(`Se han añadido **$${amount}** a ${targetUser.user.tag}.`)
+      .setDescription(`Se han añadido **$${amount}** a ${targetUser.tag}.`)
       .addFields(
         { name: "Dinero en Mano", value: `$${balance.money}`, inline: true },
         { name: "Dinero en Banco", value: `$${balance.bank}`, inline: true }
       )
-      .setThumbnail(targetUser.user.displayAvatarURL({ dynamic: true }))
+      .setThumbnail((member || targetUser).displayAvatarURL?.({ dynamic: true }) ?? targetUser.displayAvatarURL())
       .setColor("#2ecc71");
 
     return safeReply(interaction, { embeds: [embed] });

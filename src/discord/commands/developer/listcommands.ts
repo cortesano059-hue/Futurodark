@@ -24,9 +24,8 @@ const command = {
 
         try {
             // --- SOLO globales ---
-            let global = await rest.get(Routes.applicationCommands(appId)) || [];
-
-            if (!Array.isArray(global)) global = [];
+            const response = await rest.get(Routes.applicationCommands(appId));
+            const global = Array.isArray(response) ? response : [];
 
             // Texto de lista
             const globalList = global.length
@@ -37,7 +36,7 @@ const command = {
                 title: "📋 Lista de Comandos Globales",
                 color: 0x00aaff,
                 fields: [],
-                timestamp: new Date()
+                timestamp: new Date().toISOString()
             };
 
             // Dividir si es demasiado largo

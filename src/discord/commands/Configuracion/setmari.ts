@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 import safeReply from "@safeReply";
 import eco from "@economy";
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 type MariConfig = {
     itemName?: string;

@@ -11,7 +11,8 @@ import Emojis from '@src/config/EmojiList';
 import Categories from '@src/config/categories';
 import fs from 'fs';
 import path from 'path';
-import { version } from '../../../package.json';
+import pkg from '../../../package.json' with { type: "json" };
+const { version } = pkg;
 
 // Banners
 const IMAGEN_SUPERIOR = 'https://cdn.discordapp.com/attachments/1438575452288581632/1445212702690508851/comandos.png';
@@ -118,7 +119,7 @@ function getHelpMessage(client, interaction, menuId) {
             iconURL: interaction.user.displayAvatarURL()
         });
 
-    const menuRow = new ActionRowBuilder().addComponents(
+    const menuRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId(menuId) // 🔥 ID ÚNICO PARA EL SELECT
             .setPlaceholder('Selecciona una categoría')

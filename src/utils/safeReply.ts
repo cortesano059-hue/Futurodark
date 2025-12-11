@@ -1,9 +1,9 @@
-import { Interaction, InteractionReplyOptions, MessageFlags } from 'discord.js';
+import { InteractionReplyOptions, MessageFlags, RepliableInteraction } from 'discord.js';
 
 type SafeReplyPayload = string | InteractionReplyOptions;
 
 export default async function safeReply(
-  interaction: Interaction,
+  interaction: RepliableInteraction,
   payload: SafeReplyPayload,
   ephemeralOverride?: boolean
 ): Promise<any> {

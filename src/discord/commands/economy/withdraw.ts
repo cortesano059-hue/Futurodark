@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import eco from "@economy";
 import safeReply from "@src/utils/safeReply";
-import MyClient from "@structures/MyClient";
+import MyClient from "@structures/MyClient.js";
 
 export default {
     data: new SlashCommandBuilder()

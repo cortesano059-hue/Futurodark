@@ -16,8 +16,8 @@ const command = {
     if (!status)
       return safeReply(interaction, "❌ No estabas en servicio.");
 
-    const now = new Date();
-    const minutesWorked = Math.floor((now - status.lastPayment) / 60000);
+    const now = Date.now();
+    const minutesWorked = Math.floor((now - new Date(status.lastPayment).getTime()) / 60000);
 
     if (minutesWorked < 1) {
       await DutyStatus.deleteOne({ userId, guildId });

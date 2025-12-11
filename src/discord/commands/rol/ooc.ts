@@ -1,6 +1,6 @@
-import { SlashCommandBuilder, CommandInteraction } from 'discord.js';
-import safeReply from "@src/utils/safeReply.js";
-import ThemedEmbed from "@src/utils/ThemedEmbed.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import safeReply from "@src/utils/safeReply";
+import ThemedEmbed from "@src/utils/ThemedEmbed";
 
 const command = {
     data: new SlashCommandBuilder()
@@ -12,7 +12,7 @@ const command = {
             .setRequired(true)
         ),
 
-    async execute(interaction: CommandInteraction) {
+    async execute(interaction: ChatInputCommandInteraction) {
         await interaction.deferReply({ });
 
         try {
