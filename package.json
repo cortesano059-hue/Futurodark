@@ -1,48 +1,45 @@
 {
-  "name": "newdark",
-  "type": "module",
-  "main": "build/index.js",
-
+  "name": "mi-bot-discord",
+  "version": "1.0.0",
+  "description": "Bot de Discord Dark RP",
+  "main": "index.js",
+  "type": "commonjs",
   "scripts": {
-    "check": "tsc --noEmit && echo ✔ Ok",
-    "build": "tsc",
-    "dev": "tsx --env-file=.env ./src/index.ts",
-    "dev:dev": "tsx --env-file=.env.dev ./src/index.ts",
-    "watch": "tsx --watch --env-file=.env ./src/index.ts",
-    "watch:dev": "tsx --watch --env-file=.env.dev ./src/index.ts",
-    "start": "node --enable-source-maps ./build/index.js",
-    "start:prod": "npm run build && node --enable-source-maps ./build/index.js"
+    "start": "node index.js",
+    "register": "node register.js",
+    "dev": "nodemon index.js"
   },
-
-
   "dependencies": {
-    "@magicyan/discord": "1.6.4",
-    "chalk": "^5.3.0",
-    "discord.js": "^14.17.3",
-    "glob": "^10.4.5",
-    "mongoose": "^8.6.4",
-    "rou3": "0.7.10",
-    "zod": "^3.23.8"
+    "@discordjs/rest": "^2.6.0",
+    "axios": "^1.13.2",
+    "discord-api-types": "^0.38.37",
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.2.3",
+    "glob": "^13.0.0",
+    "module-alias": "^2.2.3",
+    "moment": "^2.30.1",
+    "mongoose": "^9.0.1",
+    "ms": "^2.1.3",
+    "node-fetch": "^3.3.2",
+    "postgres": "^3.4.7",
+    "supabase": "^2.67.1",
+    "winston": "^3.19.0"
   },
-
-  "devDependencies": {
-    "@types/glob": "^8.1.0",
-    "@types/node": "^22.10.1",
-    "tsx": "^4.19.2",
-    "typescript": "^5.4.5"
-  },
-
-  "imports": {
-    "#env": ["./build/env.js"],
-    "#base": ["./build/discord/base/index.js"],
-    "#functions": ["./build/functions/index.js"],
-    "#database": ["./build/database/index.js"],
-    "#server": ["./build/server/index.js"],
-    "#menus": ["./build/menus/index.js"],
-    "#tools": ["./build/tools/index.js"],
-    "#lib/*": ["./build/lib/*"],
-    "#shared/*": ["./build/shared/*"]
-  },
-
-  "baseVersion": "1.4.12"
+  "_moduleAliases": {
+    "@src": "src",
+    "@handlers": "src/handlers",
+    "@structures": "src/structures",
+    "@utils": "src/utils",
+    "@config": "src/config",
+    "@database": "src/database",
+    "@events": "src/events",
+    "@commands": "src/commands",
+    "@components": "src/components",
+    "@safeReply": "src/utils/safeReply.js",
+    "@supabase": "src/database/mongodb.js",
+    "@logger": "src/utils/logger.js",
+    "@economy": "src/database/economy.js",
+    "@economyConfig": "src/economy/index.js",
+    "@transactionModel": "src/database/Transaction.js"
+  }
 }
