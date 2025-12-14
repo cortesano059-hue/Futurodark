@@ -30,10 +30,9 @@ module.exports = {
 
     const lines = incomes.map((r, i) => {
       const role = guild.roles.cache.get(r.roleId);
-      const roleName = role ? role.name : "(Rol eliminado)";
-      const roleTag = role ? `<@&${r.roleId}>` : "❌";
+      const roleTag = role ? `<@&${r.roleId}>` : "(Rol eliminado)";
 
-      return `**${i + 1}.** ${roleTag} **${roleName}** — 💵 **$${r.incomePerHour}/hora**`;
+      return `**${i + 1}.** ${roleTag} — 💵 **$${r.incomePerHour.toLocaleString()}/hora**`; // FIX: Aplicamos toLocaleString() y eliminamos roleName.
     });
 
     return safeReply(interaction, {

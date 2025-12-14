@@ -1,7 +1,9 @@
 // src/events/ready.js
 const { Events, Routes, REST } = require("discord.js");
 const logger = require("@src/utils/logger.js");
-const { DutyStatus, IncomeRole, User } = require("@src/database/mongodb.js");
+// Nota: Las importaciones se manejan diferente en tu repositorio, 
+// pero asumiremos que DutyStatus, IncomeRole, y User se obtienen correctamente.
+const { DutyStatus, IncomeRole, User } = require("@src/database/mongodb.js"); 
 require("dotenv").config();
 
 module.exports = {
@@ -12,10 +14,9 @@ module.exports = {
         logger.info(`🤖 Bot conectado como ${client.user.tag}`);
 
         /* ======================================================
-           REGISTRO AUTOMÁTICO DE COMANDOS
+            REGISTRO AUTOMÁTICO DE COMANDOS
         ====================================================== */
 
-        // Soportamos commandArray y commandsArray (por si el handler usa ambos)
         const commands = client.commandArray || client.commandsArray;
 
         if (!commands || commands.length === 0) {
@@ -54,76 +55,79 @@ module.exports = {
         }
 
         /* ======================================================
-           SISTEMA DE PAGOS AUTOMÁTICOS CADA 1 MINUTO
+            SISTEMA DE PAGOS AUTOMÁTICOS CADA 1 MINUTO
+            
+            ⚠️ VERSIÓN DE PRUEBA: Sin try/catch para forzar el error
+            y paga a 'money' para probar la escritura.
         ====================================================== */
 
         setInterval(async () => {
-            try {
-                const now = Date.now();
-                const allDutyUsers = await DutyStatus.find({});
+            // Se eliminó el 'try {' para ver errores de la DB
+            
+            const now = Date.now();
+            const allDutyUsers = await DutyStatus.find({});
 
-                for (const duty of allDutyUsers) {
-                    const diffMs = now - duty.lastPayment.getTime();
-                    const diffHours = diffMs / (1000 * 60 * 60);
+            for (const duty of allDutyUsers) {
+                const diffMs = now - duty.lastPayment.getTime();
+                const diffHours = diffMs / (1000 * 60);
 
-                    // ¿Ya pasó 1h desde el último pago?
-                    if (diffHours < 1) continue;
+                // ¿Ya pasó 1h desde el último pago?
+                if (diffHours < 1) continue;
 
-                    // Obtener sueldo configurado del rol
-                    const incomeRole = await IncomeRole.findOne({
-                        guildId: duty.guildId,
-                        roleId: duty.roleId,
-                    });
+                // Obtener sueldo configurado del rol
+                const incomeRole = await IncomeRole.findOne({
+                    guildId: duty.guildId,
+                    roleId: duty.roleId,
+                });
 
-                    if (!incomeRole || !incomeRole.incomePerHour) {
-                        logger.warn(
-                            `⚠ Usuario ${duty.userId} tenía duty pero NO tiene income configurado. Eliminando duty.`
-                        );
-
-                        await DutyStatus.deleteOne({
-                            userId: duty.userId,
-                            guildId: duty.guildId,
-                        });
-
-                        continue;
-                    }
-
-                    const salary = incomeRole.incomePerHour;
-
-                    // Sumar al banco del usuario
-                    await User.findOneAndUpdate(
-                        { userId: duty.userId, guildId: duty.guildId },
-                        { $inc: { bank: salary } },
-                        { upsert: true }
+                if (!incomeRole || !incomeRole.incomePerHour) {
+                    logger.warn(
+                        `⚠ Usuario ${duty.userId} tenía duty pero NO tiene income configurado. Eliminando duty.`
                     );
 
-                    // Actualizar fecha del último pago
-                    duty.lastPayment = new Date();
-                    await duty.save();
+                    await DutyStatus.deleteOne({
+                        userId: duty.userId,
+                        guildId: duty.guildId,
+                    });
 
-                    // Enviar mensaje al canal si existe
-                    const guild = client.guilds.cache.get(duty.guildId);
-                    const channel = guild?.channels?.cache.get(duty.channelId);
-
-                    if (channel) {
-                        channel.send({
-                            content: `<@${duty.userId}>`,
-                            embeds: [
-                                {
-                                    title: "💵 Pago por servicio (1h)",
-                                    description: `Has recibido **$${salary}** por tu última hora de servicio.`,
-                                    color: 0x2ecc71,
-                                    footer: {
-                                        text: "Sistema automático de salarios",
-                                    },
-                                },
-                            ],
-                        }).catch(() => {});
-                    }
+                    continue;
                 }
-            } catch (err) {
-                logger.error("❌ Error en el sistema de pagos automáticos:", err);
+
+                const salary = incomeRole.incomePerHour;
+
+                // 🔥 CAMBIO CRÍTICO: Sumar a 'money' en lugar de 'bank' para probar la escritura
+                await User.findOneAndUpdate(
+                    { userId: duty.userId, guildId: duty.guildId },
+                    { $inc: { money: salary } }, // ⬅️ Antes era 'bank'
+                    { upsert: true }
+                );
+
+                // Actualizar fecha del último pago
+                duty.lastPayment = new Date();
+                await duty.save();
+
+                // Enviar mensaje al canal si existe
+                const guild = client.guilds.cache.get(duty.guildId);
+                const channel = guild?.channels?.cache.get(duty.channelId);
+
+                if (channel) {
+                    channel.send({
+                        content: `<@${duty.userId}>`,
+                        embeds: [
+                            {
+                                title: "💵 Pago por servicio (1h)",
+                                description: `Has recibido **$${salary}** por tu última hora de servicio.`,
+                                color: 0x2ecc71,
+                                footer: {
+                                    text: "Sistema automático de salarios",
+                                },
+                            },
+                        ],
+                    }).catch(() => {});
+                }
             }
+            // Se eliminó el 'catch (err) {'
+            
         }, 60 * 1000); // cada minuto
 
         logger.info("⏱ Sistema automático de salarios iniciado.");

@@ -24,8 +24,7 @@ module.exports = {
                 const all = await Backpack.find({ guildId }).limit(200);
 
                 const accesibles = all.filter(bp =>
-                    bp.ownerId === member.id ||
-                    isAdmin(member) ||
+                    // FIX: canAccessBackpack ya incluye el chequeo de owner y admin, lo simplificamos
                     canAccessBackpack(bp, member)
                 );
 
@@ -51,22 +50,23 @@ module.exports = {
                 // Durante autocomplete puede fallar si aún no se define el subcomando
             }
 
-            /* ---------- /mochila meter ---------- */
+            /* ---------- /mochila meter (Items en Inventario del usuario) ---------- */
             if (sub === "meter" && focused.name === "item") {
                 const inv = await eco.getUserInventory(member.id, guildId);
 
                 return interaction.respond(
                     inv
-                        .filter(i => i.name.toLowerCase().includes(query))
+                        .filter(i => i.itemName.toLowerCase().includes(query))
+                        .filter(i => i.amount > 0) // Solo items que tenga
                         .slice(0, 25)
                         .map(i => ({
-                            name: `${i.emoji || "📦"} ${i.name} (${i.amount})`,
-                            value: i.name
+                            name: `${i.emoji || "📦"} ${i.itemName} (x${i.amount.toLocaleString()})`,
+                            value: i.itemName
                         }))
                 );
             }
 
-            /* ---------- /mochila sacar ---------- */
+            /* ---------- /mochila sacar (Items en la Mochila seleccionada) ---------- */
             if (sub === "sacar" && focused.name === "item") {
                 const mochilaName = interaction.options.getString("mochila");
                 if (!mochilaName) return interaction.respond([]);
@@ -78,12 +78,14 @@ module.exports = {
 
                 if (!bp) return interaction.respond([]);
 
+                // FIX: Filtramos ítems nulos (si fueron eliminados) y mapeamos
                 return interaction.respond(
                     bp.items
-                        .filter(i => i.itemId.itemName.toLowerCase().includes(query))
+                        .filter(i => i.itemId && i.itemId.itemName.toLowerCase().includes(query))
                         .slice(0, 25)
                         .map(i => ({
-                            name: `${i.itemId.emoji} ${i.itemId.itemName} (${i.amount})`,
+                            // FIX: Añadimos toLocaleString() al amount
+                            name: `${i.itemId.emoji} ${i.itemId.itemName} (x${i.amount.toLocaleString()})`,
                             value: i.itemId.itemName
                         }))
                 );

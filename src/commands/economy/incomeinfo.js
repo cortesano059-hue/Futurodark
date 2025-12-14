@@ -26,8 +26,9 @@ module.exports = {
       embeds: [
         {
           title: "📄 Información salarial",
+          // FIX: Aplicamos toLocaleString() al monto.
           description:
-            `El rol **${role.name}** cobra **$${info.incomePerHour}/hora**.`,
+            `El rol **${role.name}** cobra **$${info.incomePerHour.toLocaleString()}/hora**.`,
           color: 0xf1c40f,
         }
       ]

@@ -4,6 +4,7 @@ try {
     const eco = require('@economy');
     const safeReply = require("@src/utils/safeReply.js");
     const { getEconomyConfig } = require("@economyConfig");
+    const logger = require("@logger"); // <-- NUEVA IMPORTACIÓN
 
     const { daily: dailyConfig } = getEconomyConfig();
     const COOLDOWN_TIME = dailyConfig.cooldown;
@@ -51,7 +52,22 @@ try {
                 const action = actions[Math.floor(Math.random() * actions.length)];
                 const amount = Math.floor(Math.random() * (MAX_AMOUNT - MIN_AMOUNT + 1)) + MIN_AMOUNT;
 
-                await eco.addMoney(userId, guildId, amount, 'daily');
+                // --- FIX: Añadir al BANCO directamente ---
+                const userDoc = await eco.getUser(userId, guildId);
+                if (userDoc) {
+                    userDoc.bank = (userDoc.bank || 0) + amount;
+                    await userDoc.save();
+
+                    logger.logTransaction?.({
+                        userId,
+                        guildId,
+                        type: 'daily',
+                        amount: amount,
+                        to: 'bank',
+                    });
+                }
+                // ----------------------------------------
+                
                 await eco.claimDaily(userId, guildId);
 
                 const newBalance = await eco.getBalance(userId, guildId);
@@ -62,7 +78,8 @@ try {
                     .setDescription(`${action.text} y ganaste **$${amount}**.`)
                     .addFields(
                         { name: 'Usuario', value: `${interaction.user.tag}`, inline: true },
-                        { name: 'Dinero en mano', value: `$${newBalance.balance}`, inline: true },
+                        // --- FIX: Se corrige newBalance.balance por newBalance.money ---
+                        { name: 'Dinero en mano', value: `$${newBalance.money}`, inline: true }, 
                         { name: 'Dinero en el banco', value: `$${newBalance.bank}`, inline: true }
                     );
 

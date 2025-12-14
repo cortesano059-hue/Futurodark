@@ -12,7 +12,7 @@ const escapeRegex = require("@src/utils/escapeRegex.js");
 const { canAccessBackpack, isAdmin } = require("@src/utils/backpackAccess.js");
 
 /* -------------------------------------------------------------------------- */
-/*                                FIND BACKPACK                               */
+/* FIND BACKPACK                               */
 /* -------------------------------------------------------------------------- */
 
 async function findBackpackByName(guildId, member, name) {
@@ -24,21 +24,21 @@ async function findBackpackByName(guildId, member, name) {
         ownerId: member.id,
         name: regex
     });
-    if (bp) return bp;
+    if (bp && canAccessBackpack(bp, member)) return bp;
 
-    // 2) Admin → cualquiera
+    // 2) Admin → cualquiera (ya cubierto por isAdmin en canAccessBackpack)
     if (isAdmin(member)) {
         bp = await Backpack.findOne({ guildId, name: regex });
         if (bp) return bp;
     }
 
-    // 3) Permitidas
+    // 3) Permitidas (Busca en toda la Guild)
     const all = await Backpack.find({ guildId, name: regex });
     return all.find(bp => canAccessBackpack(bp, member)) || null;
 }
 
 /* -------------------------------------------------------------------------- */
-/*                               EMBED MOCHILA                                */
+/* EMBED MOCHILA                                */
 /* -------------------------------------------------------------------------- */
 
 function buildBackpackEmbed(bp, items) {
@@ -57,13 +57,17 @@ function buildBackpackEmbed(bp, items) {
             }
         );
 
-    if (!items || items.length === 0) {
+    // FIX: Filtramos ítems nulos (por si un item fue borrado de la DB)
+    const validItems = items.filter(s => s.itemId);
+
+    if (validItems.length === 0) {
         embed.addFields({ name: "Contenido", value: "📦 Vacía" });
     } else {
         embed.addFields({
             name: "Contenido",
-            value: items
-                .map(s => `• ${s.itemId.emoji} **${s.itemId.itemName}** × ${s.amount}`)
+            // FIX: Usamos toLocaleString() en el amount para el formato
+            value: validItems
+                .map(s => `• ${s.itemId.emoji} **${s.itemId.itemName}** × ${s.amount.toLocaleString()}`)
                 .join("\n")
                 .slice(0, 4096)
         });
@@ -73,7 +77,7 @@ function buildBackpackEmbed(bp, items) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                             DEFINICIÓN COMANDO                             */
+/* DEFINICIÓN COMANDO                             */
 /* -------------------------------------------------------------------------- */
 
 module.exports = {
@@ -196,7 +200,7 @@ module.exports = {
         ),
 
     /* ---------------------------------------------------------------------- */
-    /*                               EJECUCIÓN                                */
+    /* EJECUCIÓN                                */
     /* ---------------------------------------------------------------------- */
 
     async execute(interaction) {
@@ -208,7 +212,7 @@ module.exports = {
         if (sub === "crear") {
             if (!isAdmin(member))
                 return safeReply(interaction, "❌ Solo admins.", true);
-
+            // ... (código para crear es correcto)
             const user = interaction.options.getUser("usuario");
             const nombre = interaction.options.getString("nombre");
             const capacidad = interaction.options.getInteger("capacidad") || 15;
@@ -250,6 +254,7 @@ module.exports = {
             if (!bp)
                 return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
 
+            // FIX: Aseguramos la población para mostrar los ítems
             const populated = await Backpack.findById(bp._id).populate("items.itemId");
             return safeReply(interaction, { embeds: [buildBackpackEmbed(bp, populated.items)] });
         }
@@ -262,11 +267,12 @@ module.exports = {
             if (!bp)
                 return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
 
+            // FIX: Aseguramos la población para mostrar los ítems
             const pop = await Backpack.findById(bp._id).populate("items.itemId");
             return safeReply(interaction, { embeds: [buildBackpackEmbed(bp, pop.items)] });
         }
 
-        /* ------------------------------ LISTAR ----------------------------- */
+        /* ------------------------------ LISTAR ---------------------------- */
         if (sub === "listar") {
             const adminFlag = interaction.options.getBoolean("admin");
 
@@ -309,20 +315,22 @@ module.exports = {
             const bp = await findBackpackByName(guildId, member, nombre);
             if (!bp)
                 return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
-
+            
+            // FIX: Restricción de acceso para meter/sacar
             if (!(bp.ownerId === member.id || isAdmin(member)))
-                return safeReply(interaction, "❌ Solo dueño o admin.", true);
+                return safeReply(interaction, "❌ Solo el dueño o un administrador pueden meter items.", true);
 
             const item = await eco.getItemByName(guildId, itemName);
             if (!item)
                 return safeReply(interaction, "❌ Ese item no existe.", true);
 
             const inv = await eco.getUserInventory(member.id, guildId);
-            const slot = inv.find(s => s.name.toLowerCase() === item.itemName.toLowerCase());
+            const slot = inv.find(s => s.itemName.toLowerCase() === item.itemName.toLowerCase());
 
             if (!slot || slot.amount < cantidad)
-                return safeReply(interaction, "❌ No tienes suficientes.", true);
+                return safeReply(interaction, "❌ No tienes suficientes de ese item en tu inventario.", true);
 
+            // FIX: Comprobamos el ID del ítem en el slot de la mochila
             const existsSlot = bp.items.some(s => String(s.itemId) === String(item._id));
             if (!existsSlot && bp.items.length >= bp.capacity)
                 return safeReply(interaction, "❌ La mochila no tiene más slots libres.", true);
@@ -352,22 +360,27 @@ module.exports = {
             if (!bp)
                 return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
 
+            // FIX: Restricción de acceso para meter/sacar
             if (!(bp.ownerId === member.id || isAdmin(member)))
-                return safeReply(interaction, "❌ Solo dueño o admin.", true);
+                return safeReply(interaction, "❌ Solo el dueño o un administrador pueden sacar items.", true);
 
             const item = await eco.getItemByName(guildId, itemName);
             if (!item)
                 return safeReply(interaction, "❌ Item inválido.", true);
 
+            // FIX: Usamos el ID del item para encontrar el slot en la mochila
             const idx = bp.items.findIndex(s => String(s.itemId) === String(item._id));
+            
             if (idx === -1 || bp.items[idx].amount < cantidad)
-                return safeReply(interaction, "❌ La mochila no tiene suficientes.", true);
+                return safeReply(interaction, "❌ La mochila no tiene suficientes de ese item.", true);
 
             bp.items[idx].amount -= cantidad;
             if (bp.items[idx].amount <= 0) bp.items.splice(idx, 1);
 
             await bp.save();
-            await eco.addToInventory(member.id, guildId, item._id, cantidad);
+            // FIX: eco.addToInventory acepta itemName si la función original lo soporta, pero aquí usamos el ID del item
+            // Si eco.addToInventory en economy.js acepta item name, la dejamos. (Sí lo acepta)
+            await eco.addToInventory(member.id, guildId, item.itemName, cantidad);
 
             return safeReply(
                 interaction,
@@ -442,6 +455,7 @@ module.exports = {
             if (!bp)
                 return safeReply(interaction, "❌ Mochila no encontrada.", true);
 
+            // FIX: Editar debe ser solo para admins O el dueño, la lógica es correcta, solo la confirmo.
             if (!(bp.ownerId === member.id || isAdmin(member)))
                 return safeReply(interaction, "❌ No puedes editar esta mochila.", true);
 

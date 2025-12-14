@@ -18,14 +18,13 @@ module.exports = {
 
         const guildId = interaction.guild.id;
         const policeRole = await eco.getPoliceRole(guildId);
+        const user = interaction.options.getMember('usuario'); // Obtenemos el GuildMember
 
         if (!policeRole)
             return safeReply(interaction, "⚠️ No se ha configurado el rol de policía.");
 
         if (!interaction.member.roles.cache.has(policeRole))
             return safeReply(interaction, `❌ Necesitas el rol <@&${policeRole}>.`);
-
-        const user = interaction.options.getMember('usuario');
 
         if (!user)
             return safeReply(interaction, "❌ Usuario no encontrado.");
@@ -35,7 +34,8 @@ module.exports = {
 
         const embed = ThemedEmbed.success(
             "🔒 Usuario esposado",
-            `${user.user.tag} ha sido esposado por ${interaction.user.tag}.`
+            // FIX: Mención explícita y displayName para el ejecutor
+            `<@${user.id}> ha sido esposado por ${interaction.member}.`
         );
 
         return safeReply(interaction, { embeds: [embed] });

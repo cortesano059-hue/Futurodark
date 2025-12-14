@@ -31,7 +31,7 @@ module.exports = {
         .addIntegerOption(o => o.setName("stock").setDescription("Stock (-1 ilimitado)"))
         .addIntegerOption(o => o.setName("tiempo").setDescription("Tiempo límite en ms"))
         .addStringOption(o => o.setName("requisitos").setDescription("Requisitos separados por ;"))
-        .addStringOption(o => o.setName("acciones").setDescription("Acciones separadas por ;"))
+        .addStringOption(o => o.setName("acciones").setDescription("Acciones separados por ;"))
     )
 
     /* ===============================
@@ -158,8 +158,15 @@ module.exports = {
         const exists = await eco.getItemByName(guildId, name);
         if (exists) return safeReply(interaction, "❌ Ya existe ese item.");
 
-        // Create item (economy.js updated to accept data object)
-        const item = await eco.createItem(guildId, name, desc, price, emoji, payload);
+        // FIX: Reordenar los argumentos para que coincidan con eco.createItem (price, desc, emoji, extra)
+        const item = await eco.createItem(
+          guildId, 
+          name, 
+          price, // Precio (3er argumento en eco.createItem)
+          desc, // Descripción (4to argumento en eco.createItem)
+          emoji, // Emoji (5to argumento en eco.createItem)
+          payload // Extra (6to argumento en eco.createItem)
+        );
 
         if (!item) return safeReply(interaction, "❌ No se pudo crear el item.");
 
@@ -289,12 +296,16 @@ module.exports = {
         // EJECUTAR ACCIONES
         const msgs = await actions.executeActions(interaction, item, userId, guildId);
 
+        // FIX: Obtener el nuevo balance después de la compra
+        const newBalanceAfterPurchase = await eco.getBalance(userId, guildId);
+
         const embed = new EmbedBuilder()
           .setTitle("🛒 Compra realizada")
-          .setColor("#2ecc71")
-          .setDescription(`Has comprado **${qty}x ${item.itemName}** por **$${total}**`)
+          // FIX: toLocaleString()
+          .setDescription(`Has comprado **${qty}x ${item.itemName}** por **$${total.toLocaleString()}**`)
           .addFields(
-            { name: "💵 Nuevo saldo", value: `${(await eco.getBalance(userId, guildId)).money}`, inline: true },
+            // FIX: Usar newBalanceAfterPurchase.money y toLocaleString()
+            { name: "💵 Nuevo saldo (Cartera)", value: `$${newBalanceAfterPurchase.money.toLocaleString()}`, inline: true },
             { name: "📦 Stock restante", value: `${item.stock}`, inline: true }
           );
 
@@ -318,11 +329,13 @@ module.exports = {
           .setColor("#3498db")
           .setDescription(item.description || "Sin descripción.")
           .addFields(
-            { name: "💰 Precio", value: `${item.price}`, inline: true },
+            // FIX: toLocaleString()
+            { name: "💰 Precio", value: `${item.price.toLocaleString()}`, inline: true }, 
             { name: "📦 Inventariable", value: item.inventory ? "Sí" : "No", inline: true },
             { name: "🧪 Usable", value: item.usable ? "Sí" : "No", inline: true },
             { name: "💸 Vendible", value: item.sellable ? "Sí" : "No", inline: true },
-            { name: "📦 Stock", value: `${item.stock}`, inline: true },
+            { name: "📦 Stock", value: item.stock === -1 ? "Ilimitado" : `${item.stock}`, inline: true },
+            { name: "⏳ Tiempo límite", value: item.timeLimit === 0 ? "Sin límite" : `${item.timeLimit}ms`, inline: true },
             { name: "📋 Requisitos", value: item.requirements.length ? item.requirements.join("\n") : "Ninguno" },
             { name: "⚙️ Acciones", value: item.actions.length ? item.actions.join("\n") : "Ninguna" }
           );

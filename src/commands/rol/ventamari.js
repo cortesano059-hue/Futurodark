@@ -6,10 +6,11 @@ const eco = require("@economy");
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("vendermari")
-        .setDescription("Vende marihuana (requiere rol ilegal y item configurado)."),
+        .setDescription("Vende marihuana (requiere rol ilegal y item configurado)."), // FIX: Se elimina la opción 'privado'
 
     async execute(interaction) {
-        await interaction.deferReply();
+        // FIX: Forzamos ephemeral a 'true' en el deferReply para todas las respuestas
+        await interaction.deferReply({ ephemeral: true });
 
         const guildId = interaction.guild.id;
         const userId = interaction.user.id;
@@ -22,6 +23,7 @@ module.exports = {
         if (!cfg)
             return safeReply(interaction, {
                 content: "❌ No se ha configurado la venta de marihuana. Usa `/config-mari`.",
+                ephemeral: true
             });
 
         const { itemName, roleId, minConsume, maxConsume, minPrice, maxPrice } = cfg;
@@ -31,7 +33,8 @@ module.exports = {
         ============================================================ */
         if (roleId && !interaction.member.roles.cache.has(roleId)) {
             return safeReply(interaction, {
-                content: `❌ No tienes el rol ilegal requerido para vender. Debes tener: <@&${roleId}>`
+                content: `❌ No tienes el rol ilegal requerido para vender. Debes tener: <@&${roleId}>`,
+                ephemeral: true
             });
         }
 
@@ -42,7 +45,8 @@ module.exports = {
 
         if (!result.success) {
             return safeReply(interaction, {
-                content: `❌ ${result.message || "No se pudo completar la venta."}`
+                content: `❌ ${result.message || "No se pudo completar la venta."}`,
+                ephemeral: true
             });
         }
 
@@ -74,6 +78,7 @@ module.exports = {
             .setFooter({ text: "Mercado ilegal | DarkRP" })
             .setTimestamp();
 
+        // safeReply usará el ephemeral: true de deferReply.
         return safeReply(interaction, { embeds: [embed] });
     }
 };
