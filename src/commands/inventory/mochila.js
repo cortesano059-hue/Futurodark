@@ -1,471 +1,337 @@
-// src/commands/economia/mochilas/mochila.js
-const {
-    SlashCommandBuilder,
-    EmbedBuilder
-} = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 
-const safeReply = require("@src/utils/safeReply.js");
 const { Backpack } = require("@database/mongodb");
+const { isAdmin } = require("@src/utils/backpackAccess");
+const findBackpack = require("@src/utils/findBackpack");
 const eco = require("@economy");
 
-const escapeRegex = require("@src/utils/escapeRegex.js");
-const { canAccessBackpack, isAdmin } = require("@src/utils/backpackAccess.js");
-
-/* -------------------------------------------------------------------------- */
-/* FIND BACKPACK                               */
-/* -------------------------------------------------------------------------- */
-
-async function findBackpackByName(guildId, member, name) {
-    const regex = new RegExp("^" + escapeRegex(name) + "$", "i");
-
-    // 1) Propia
-    let bp = await Backpack.findOne({
-        guildId,
-        ownerId: member.id,
-        name: regex
-    });
-    if (bp && canAccessBackpack(bp, member)) return bp;
-
-    // 2) Admin → cualquiera (ya cubierto por isAdmin en canAccessBackpack)
-    if (isAdmin(member)) {
-        bp = await Backpack.findOne({ guildId, name: regex });
-        if (bp) return bp;
-    }
-
-    // 3) Permitidas (Busca en toda la Guild)
-    const all = await Backpack.find({ guildId, name: regex });
-    return all.find(bp => canAccessBackpack(bp, member)) || null;
-}
-
-/* -------------------------------------------------------------------------- */
-/* EMBED MOCHILA                                */
-/* -------------------------------------------------------------------------- */
-
-function buildBackpackEmbed(bp, items) {
-    const embed = new EmbedBuilder()
-        .setTitle(`${bp.emoji} Mochila: ${bp.name}`)
-        .setColor("#2ecc71")
-        .setDescription(bp.description || "Sin descripción.")
-        .addFields(
-            { name: "Capacidad", value: `${bp.items.length} / ${bp.capacity}`, inline: true },
-            {
-                name: "Acceso",
-                value: bp.accessType === "owner_only"
-                    ? "Solo dueño + admins"
-                    : "Personalizado (usuarios / roles)",
-                inline: true
-            }
-        );
-
-    // FIX: Filtramos ítems nulos (por si un item fue borrado de la DB)
-    const validItems = items.filter(s => s.itemId);
-
-    if (validItems.length === 0) {
-        embed.addFields({ name: "Contenido", value: "📦 Vacía" });
-    } else {
-        embed.addFields({
-            name: "Contenido",
-            // FIX: Usamos toLocaleString() en el amount para el formato
-            value: validItems
-                .map(s => `• ${s.itemId.emoji} **${s.itemId.itemName}** × ${s.amount.toLocaleString()}`)
-                .join("\n")
-                .slice(0, 4096)
-        });
-    }
-
-    return embed;
-}
-
-/* -------------------------------------------------------------------------- */
-/* DEFINICIÓN COMANDO                             */
-/* -------------------------------------------------------------------------- */
+// Handlers
+const listHandler = require("@handlers/mochila/list");
+const openHandler = require("@handlers/mochila/open");
+const meterHandler = require("@handlers/mochila/meter");
+const sacarHandler = require("@handlers/mochila/sacar");
+const addHandler = require("@handlers/mochila/add");
+const infoHandler = require("@handlers/mochila/info");
+const autorizarHandler = require("@handlers/mochila/autorizar");
+const createHandler = require("@handlers/mochila/create");
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName("mochila")
-        .setDescription("Sistema de mochilas")
+  data: new SlashCommandBuilder()
+    .setName("mochila")
+    .setDescription("Sistema de mochilas por slots")
 
-        /* ------------------------------ CREAR ------------------------------ */
-        .addSubcommand(sub =>
-            sub
-                .setName("crear")
-                .setDescription("Crear una mochila (solo admins)")
-                .addUserOption(o => o.setName("usuario").setDescription("Dueño").setRequired(true))
-                .addStringOption(o =>
-                    o.setName("nombre").setDescription("Nombre").setRequired(true)
-                )
-                .addIntegerOption(o => o.setName("capacidad").setDescription("Slots").setMinValue(1))
-                .addStringOption(o => o.setName("emoji").setDescription("Emoji"))
-                .addStringOption(o => o.setName("descripcion").setDescription("Descripción"))
+    /* ===================== CREAR ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("crear")
+        .setDescription("Crear una mochila")
+        .addStringOption(o =>
+          o.setName("tipo")
+            .setDescription("Tipo de mochila")
+            .setRequired(true)
+            .addChoices(
+              { name: "Personal", value: "user" },
+              { name: "Rol (comunitaria)", value: "role" },
+              { name: "Sistema", value: "system" }
+            )
         )
-
-        /* ------------------------------ ABRIR ------------------------------ */
-        .addSubcommand(sub =>
-            sub
-                .setName("abrir")
-                .setDescription("Abrir una mochila")
-                .addStringOption(o =>
-                    o.setName("nombre").setDescription("Nombre de la mochila")
-                        .setRequired(true).setAutocomplete(true)
-                )
+        .addStringOption(o =>
+          o.setName("nombre")
+            .setDescription("Nombre de la mochila")
+            .setRequired(true)
         )
-
-        /* ------------------------------ INFO ------------------------------ */
-        .addSubcommand(sub =>
-            sub
-                .setName("info")
-                .setDescription("Ver información de una mochila")
-                .addStringOption(o =>
-                    o.setName("nombre").setDescription("Nombre")
-                        .setRequired(true).setAutocomplete(true)
-                )
+        .addUserOption(o =>
+          o.setName("usuario")
+            .setDescription("Dueño (solo tipo personal)")
         )
-
-        /* ------------------------------ LISTAR ---------------------------- */
-        .addSubcommand(sub =>
-            sub
-                .setName("listar")
-                .setDescription("Listar mochilas accesibles")
-                .addBooleanOption(o =>
-                    o.setName("admin").setDescription("Ver todas (solo admins)")
-                )
+        .addRoleOption(o =>
+          o.setName("rol")
+            .setDescription("Rol dueño (solo tipo rol)")
         )
-
-        /* ------------------------------ METER ----------------------------- */
-        .addSubcommand(sub =>
-            sub
-                .setName("meter")
-                .setDescription("Meter items")
-                .addStringOption(o =>
-                    o.setName("mochila").setDescription("Nombre").setRequired(true).setAutocomplete(true)
-                )
-                .addStringOption(o =>
-                    o.setName("item").setDescription("Item").setRequired(true).setAutocomplete(true)
-                )
-                .addIntegerOption(o => o.setName("cantidad").setDescription("Cantidad").setMinValue(1))
+        .addIntegerOption(o =>
+          o.setName("capacidad")
+            .setDescription("Capacidad")
+            .setMinValue(1)
         )
-
-        /* ------------------------------ SACAR ----------------------------- */
-        .addSubcommand(sub =>
-            sub
-                .setName("sacar")
-                .setDescription("Sacar items de una mochila")
-                .addStringOption(o =>
-                    o.setName("mochila").setDescription("Nombre").setRequired(true).setAutocomplete(true)
-                )
-                .addStringOption(o =>
-                    o.setName("item").setDescription("Item").setRequired(true).setAutocomplete(true)
-                )
-                .addIntegerOption(o => o.setName("cantidad").setDescription("Cantidad").setMinValue(1))
+        .addStringOption(o =>
+          o.setName("emoji").setDescription("Emoji")
         )
-
-        /* ------------------------------ AUTORIZAR ------------------------- */
-        .addSubcommand(sub =>
-            sub
-                .setName("autorizar")
-                .setDescription("Dar o quitar permisos")
-                .addStringOption(o =>
-                    o.setName("mochila").setDescription("Nombre").setRequired(true).setAutocomplete(true)
-                )
-                .addStringOption(o =>
-                    o.setName("accion").setDescription("Acción").setRequired(true)
-                        .addChoices(
-                            { name: "Añadir", value: "add" },
-                            { name: "Quitar", value: "remove" }
-                        )
-                )
-                .addStringOption(o =>
-                    o.setName("tipo").setDescription("Usuario o Rol").setRequired(true)
-                        .addChoices(
-                            { name: "Usuario", value: "user" },
-                            { name: "Rol", value: "role" }
-                        )
-                )
-                .addUserOption(o => o.setName("usuario").setDescription("Usuario"))
-                .addRoleOption(o => o.setName("rol").setDescription("Rol"))
+        .addStringOption(o =>
+          o.setName("descripcion").setDescription("Descripción")
         )
+    )
 
-        /* ------------------------------ EDITAR ---------------------------- */
-        .addSubcommand(sub =>
-            sub
-                .setName("editar")
-                .setDescription("Editar una mochila")
-                .addStringOption(o =>
-                    o.setName("nombre").setDescription("Nombre actual").setRequired(true).setAutocomplete(true)
-                )
-                .addStringOption(o => o.setName("nuevo_nombre").setDescription("Nuevo nombre"))
-                .addIntegerOption(o => o.setName("capacidad").setDescription("Nueva capacidad").setMinValue(1))
-                .addStringOption(o => o.setName("emoji").setDescription("Nuevo emoji"))
-                .addStringOption(o => o.setName("descripcion").setDescription("Nueva descripción"))
-        ),
+    /* ===================== LISTAR ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("listar")
+        .setDescription("Listar mochilas")
+        .addBooleanOption(o =>
+          o.setName("admin").setDescription("Ver todas (solo admins)")
+        )
+    )
 
-    /* ---------------------------------------------------------------------- */
-    /* EJECUCIÓN                                */
-    /* ---------------------------------------------------------------------- */
+    /* ===================== ABRIR ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("abrir")
+        .setDescription("Abrir mochila")
+        .addStringOption(o =>
+          o.setName("nombre")
+            .setDescription("Mochila")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addBooleanOption(o =>
+          o.setName("admin").setDescription("Ignorar permisos")
+        )
+    )
 
-    async execute(interaction) {
-        const sub = interaction.options.getSubcommand();
-        const guildId = interaction.guild.id;
-        const member = interaction.member;
+    /* ===================== INFO ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("info")
+        .setDescription("Info de mochila")
+        .addStringOption(o =>
+          o.setName("nombre")
+            .setDescription("Mochila")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addBooleanOption(o =>
+          o.setName("admin").setDescription("Ignorar permisos")
+        )
+    )
 
-        /* ------------------------------ CREAR ------------------------------ */
-        if (sub === "crear") {
-            if (!isAdmin(member))
-                return safeReply(interaction, "❌ Solo admins.", true);
-            // ... (código para crear es correcto)
-            const user = interaction.options.getUser("usuario");
-            const nombre = interaction.options.getString("nombre");
-            const capacidad = interaction.options.getInteger("capacidad") || 15;
-            const emoji = interaction.options.getString("emoji") || "🎒";
-            const descripcion = interaction.options.getString("descripcion") || "";
+    /* ===================== METER ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("meter")
+        .setDescription("Meter items")
+        .addStringOption(o =>
+          o.setName("mochila")
+            .setDescription("Mochila")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addStringOption(o =>
+          o.setName("item")
+            .setDescription("Item")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addIntegerOption(o =>
+          o.setName("cantidad")
+            .setDescription("Cantidad")
+            .setMinValue(1)
+        )
+        .addBooleanOption(o =>
+          o.setName("admin").setDescription("Ignorar permisos")
+        )
+    )
 
-            const exists = await Backpack.findOne({
-                guildId,
-                ownerId: user.id,
-                name: new RegExp("^" + escapeRegex(nombre) + "$", "i")
-            });
+    /* ===================== SACAR ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("sacar")
+        .setDescription("Sacar items")
+        .addStringOption(o =>
+          o.setName("mochila")
+            .setDescription("Mochila")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addStringOption(o =>
+          o.setName("item")
+            .setDescription("Item")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addIntegerOption(o =>
+          o.setName("cantidad")
+            .setDescription("Cantidad")
+            .setMinValue(1)
+        )
+        .addBooleanOption(o =>
+          o.setName("admin").setDescription("Ignorar permisos")
+        )
+    )
 
-            if (exists)
-                return safeReply(interaction, "❌ Ese usuario ya tiene una mochila con ese nombre.", true);
+    /* ===================== AÑADIR ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("añadir")
+        .setDescription("Añadir items (admin)")
+        .addStringOption(o =>
+          o.setName("mochila")
+            .setDescription("Mochila")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addStringOption(o =>
+          o.setName("item")
+            .setDescription("Item")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addIntegerOption(o =>
+          o.setName("cantidad")
+            .setDescription("Cantidad")
+            .setRequired(true)
+            .setMinValue(1)
+        )
+    )
 
-            const bp = new Backpack({
-                guildId,
-                ownerId: user.id,
-                name: nombre,
-                emoji,
-                description: descripcion,
-                capacity
-            });
+    /* ===================== AUTORIZAR ===================== */
+    .addSubcommand(sub =>
+      sub
+        .setName("autorizar")
+        .setDescription("Autorizar acceso")
+        .addStringOption(o =>
+          o.setName("mochila")
+            .setDescription("Mochila")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addStringOption(o =>
+          o.setName("accion")
+            .setDescription("Acción")
+            .setRequired(true)
+            .addChoices(
+              { name: "Añadir", value: "add" },
+              { name: "Quitar", value: "remove" }
+            )
+        )
+        .addUserOption(o =>
+          o.setName("usuario").setDescription("Usuario")
+        )
+        .addRoleOption(o =>
+          o.setName("rol").setDescription("Rol")
+        )
+        .addBooleanOption(o =>
+          o.setName("admin").setDescription("Ignorar permisos")
+        )
+    ),
 
-            await bp.save();
+  /* ====================================================================== */
+  /* AUTOCOMPLETE                                                           */
+  /* ====================================================================== */
 
-            return safeReply(
-                interaction,
-                `🎒 Mochila **${nombre}** creada para <@${user.id}>.`,
-                true
-            );
-        }
+  async autocomplete(interaction) {
+    const focused = interaction.options.getFocused(true);
+    if (!focused) return;
 
-        /* ------------------------------ ABRIR ------------------------------ */
-        if (sub === "abrir") {
-            const nombre = interaction.options.getString("nombre");
-            const bp = await findBackpackByName(guildId, member, nombre);
+    const guildId = interaction.guild.id;
+    const member = interaction.member;
+    const sub = interaction.options.getSubcommand();
 
-            if (!bp)
-                return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
+    const adminMode =
+      isAdmin(member) && interaction.options.getBoolean("admin") === true;
 
-            // FIX: Aseguramos la población para mostrar los ítems
-            const populated = await Backpack.findById(bp._id).populate("items.itemId");
-            return safeReply(interaction, { embeds: [buildBackpackEmbed(bp, populated.items)] });
-        }
+    /* ===================== MOCHILAS ===================== */
+    if (focused.name === "nombre" || focused.name === "mochila") {
+      let backpacks = await Backpack.find({ guildId });
 
-        /* ------------------------------ INFO ------------------------------- */
-        if (sub === "info") {
-            const nombre = interaction.options.getString("nombre");
-            const bp = await findBackpackByName(guildId, member, nombre);
+      if (!adminMode) {
+        backpacks = backpacks.filter(bp => {
+          if (bp.ownerType === "user" && bp.ownerId === member.id) return true;
+          if (
+            bp.ownerType === "role" &&
+            member.roles.cache.has(bp.ownerId)
+          ) return true;
+          if (bp.allowedUsers?.includes(member.id)) return true;
+          if (bp.allowedRoles?.some(r => member.roles.cache.has(r))) return true;
+          return false;
+        });
+      }
 
-            if (!bp)
-                return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
-
-            // FIX: Aseguramos la población para mostrar los ítems
-            const pop = await Backpack.findById(bp._id).populate("items.itemId");
-            return safeReply(interaction, { embeds: [buildBackpackEmbed(bp, pop.items)] });
-        }
-
-        /* ------------------------------ LISTAR ---------------------------- */
-        if (sub === "listar") {
-            const adminFlag = interaction.options.getBoolean("admin");
-
-            let list = await Backpack.find({ guildId });
-
-            // 🔥 ARREGLO FINAL:
-            // admin:true → muestra todo
-            // admin:false / vacío → solo accesibles
-            if (!(adminFlag === true && isAdmin(member))) {
-                list = list.filter(bp => canAccessBackpack(bp, member));
-            }
-
-            if (list.length === 0)
-                return safeReply(interaction, "📦 No tienes mochilas visibles.", true);
-
-            const txt = list
-                .map(bp => `• ${bp.emoji} **${bp.name}** — dueño: <@${bp.ownerId}>`)
-                .join("\n");
-
-            return safeReply(
-                interaction,
-                {
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor("#9b59b6")
-                            .setTitle("📋 Mochilas")
-                            .setDescription(txt.slice(0, 4096))
-                    ]
-                },
-                true
-            );
-        }
-
-        /* ------------------------------ METER ------------------------------ */
-        if (sub === "meter") {
-            const nombre = interaction.options.getString("mochila");
-            const itemName = interaction.options.getString("item");
-            const cantidad = interaction.options.getInteger("cantidad") || 1;
-
-            const bp = await findBackpackByName(guildId, member, nombre);
-            if (!bp)
-                return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
-            
-            // FIX: Restricción de acceso para meter/sacar
-            if (!(bp.ownerId === member.id || isAdmin(member)))
-                return safeReply(interaction, "❌ Solo el dueño o un administrador pueden meter items.", true);
-
-            const item = await eco.getItemByName(guildId, itemName);
-            if (!item)
-                return safeReply(interaction, "❌ Ese item no existe.", true);
-
-            const inv = await eco.getUserInventory(member.id, guildId);
-            const slot = inv.find(s => s.itemName.toLowerCase() === item.itemName.toLowerCase());
-
-            if (!slot || slot.amount < cantidad)
-                return safeReply(interaction, "❌ No tienes suficientes de ese item en tu inventario.", true);
-
-            // FIX: Comprobamos el ID del ítem en el slot de la mochila
-            const existsSlot = bp.items.some(s => String(s.itemId) === String(item._id));
-            if (!existsSlot && bp.items.length >= bp.capacity)
-                return safeReply(interaction, "❌ La mochila no tiene más slots libres.", true);
-
-            await eco.removeItem(member.id, guildId, item.itemName, cantidad);
-
-            const idx = bp.items.findIndex(s => String(s.itemId) === String(item._id));
-            if (idx === -1) bp.items.push({ itemId: item._id, amount: cantidad });
-            else bp.items[idx].amount += cantidad;
-
-            await bp.save();
-
-            return safeReply(
-                interaction,
-                `📥 Metiste **${cantidad}x ${item.itemName}** en **${bp.name}**.`,
-                true
-            );
-        }
-
-        /* ------------------------------ SACAR ------------------------------ */
-        if (sub === "sacar") {
-            const nombre = interaction.options.getString("mochila");
-            const itemName = interaction.options.getString("item");
-            const cantidad = interaction.options.getInteger("cantidad") || 1;
-
-            const bp = await findBackpackByName(guildId, member, nombre);
-            if (!bp)
-                return safeReply(interaction, "❌ No existe o no tienes acceso.", true);
-
-            // FIX: Restricción de acceso para meter/sacar
-            if (!(bp.ownerId === member.id || isAdmin(member)))
-                return safeReply(interaction, "❌ Solo el dueño o un administrador pueden sacar items.", true);
-
-            const item = await eco.getItemByName(guildId, itemName);
-            if (!item)
-                return safeReply(interaction, "❌ Item inválido.", true);
-
-            // FIX: Usamos el ID del item para encontrar el slot en la mochila
-            const idx = bp.items.findIndex(s => String(s.itemId) === String(item._id));
-            
-            if (idx === -1 || bp.items[idx].amount < cantidad)
-                return safeReply(interaction, "❌ La mochila no tiene suficientes de ese item.", true);
-
-            bp.items[idx].amount -= cantidad;
-            if (bp.items[idx].amount <= 0) bp.items.splice(idx, 1);
-
-            await bp.save();
-            // FIX: eco.addToInventory acepta itemName si la función original lo soporta, pero aquí usamos el ID del item
-            // Si eco.addToInventory en economy.js acepta item name, la dejamos. (Sí lo acepta)
-            await eco.addToInventory(member.id, guildId, item.itemName, cantidad);
-
-            return safeReply(
-                interaction,
-                `📤 Sacaste **${cantidad}x ${item.itemName}** de **${bp.name}**.`,
-                true
-            );
-        }
-
-        /* ------------------------------ AUTORIZAR --------------------------- */
-        if (sub === "autorizar") {
-            const nombre = interaction.options.getString("mochila");
-            const accion = interaction.options.getString("accion");
-            const tipo = interaction.options.getString("tipo");
-
-            const targetUser = interaction.options.getUser("usuario");
-            const targetRole = interaction.options.getRole("rol");
-
-            const bp = await Backpack.findOne({
-                guildId,
-                name: new RegExp("^" + escapeRegex(nombre) + "$", "i")
-            });
-
-            if (!bp)
-                return safeReply(interaction, "❌ Mochila no encontrada.", true);
-
-            if (!(bp.ownerId === member.id || isAdmin(member)))
-                return safeReply(interaction, "❌ No puedes modificar permisos.", true);
-
-            if (accion === "add") bp.accessType = "custom";
-
-            if (tipo === "user") {
-                if (!targetUser)
-                    return safeReply(interaction, "❌ Falta usuario.", true);
-
-                const id = targetUser.id;
-                if (accion === "add") {
-                    if (!bp.allowedUsers.includes(id)) bp.allowedUsers.push(id);
-                } else {
-                    bp.allowedUsers = bp.allowedUsers.filter(u => u !== id);
-                }
-            }
-
-            if (tipo === "role") {
-                if (!targetRole)
-                    return safeReply(interaction, "❌ Falta rol.", true);
-
-                const id = targetRole.id;
-                if (accion === "add") {
-                    if (!bp.allowedRoles.includes(id)) bp.allowedRoles.push(id);
-                } else {
-                    bp.allowedRoles = bp.allowedRoles.filter(r => r !== id);
-                }
-            }
-
-            await bp.save();
-            return safeReply(interaction, `✅ Permisos actualizados para **${bp.name}**.`, true);
-        }
-
-        /* ------------------------------ EDITAR ------------------------------ */
-        if (sub === "editar") {
-            const nombre = interaction.options.getString("nombre");
-            const nuevoNombre = interaction.options.getString("nuevo_nombre");
-            const nuevaCap = interaction.options.getInteger("capacidad");
-            const nuevoEmoji = interaction.options.getString("emoji");
-            const nuevaDesc = interaction.options.getString("descripcion");
-
-            const bp = await Backpack.findOne({
-                guildId,
-                name: new RegExp("^" + escapeRegex(nombre) + "$", "i")
-            });
-
-            if (!bp)
-                return safeReply(interaction, "❌ Mochila no encontrada.", true);
-
-            // FIX: Editar debe ser solo para admins O el dueño, la lógica es correcta, solo la confirmo.
-            if (!(bp.ownerId === member.id || isAdmin(member)))
-                return safeReply(interaction, "❌ No puedes editar esta mochila.", true);
-
-            if (nuevoNombre) bp.name = nuevoNombre;
-            if (nuevaCap) bp.capacity = nuevaCap;
-            if (nuevoEmoji) bp.emoji = nuevoEmoji;
-            if (nuevaDesc) bp.description = nuevaDesc;
-
-            await bp.save();
-            return safeReply(interaction, `✅ Mochila **${bp.name}** actualizada.`, true);
-        }
+      return interaction.respond(
+        backpacks
+          .filter(bp =>
+            bp.name.toLowerCase().includes(focused.value.toLowerCase())
+          )
+          .slice(0, 25)
+          .map(bp => ({ name: bp.name, value: bp.name }))
+      );
     }
+
+    /* ===================== ITEMS ===================== */
+    if (focused.name === "item") {
+
+      /* -------- METER -------- */
+      if (sub === "meter") {
+        const inventory = await eco.getUserInventory(member.id, guildId);
+
+        return interaction.respond(
+          inventory
+            .map(i => ({
+              name: `${i.itemName} (${i.amount})`,
+              value: i.itemName,
+            }))
+            .filter(i =>
+              i.name.toLowerCase().includes(focused.value.toLowerCase())
+            )
+            .slice(0, 25)
+        );
+      }
+
+      /* -------- SACAR (FIX REAL) -------- */
+      if (sub === "sacar") {
+        const mochilaName = interaction.options.getString("mochila");
+        if (!mochilaName) return interaction.respond([]);
+
+        const bp = await Backpack
+          .findOne({
+            guildId,
+            name: new RegExp(`^${mochilaName}$`, "i"),
+          })
+          .populate("items.itemId");
+
+        if (!bp || !bp.items?.length) return interaction.respond([]);
+
+        return interaction.respond(
+          bp.items
+            .filter(i => i.itemId)
+            .map(i => ({
+              name: `${i.itemId.itemName} (${i.amount})`,
+              value: i.itemId.itemName,
+            }))
+            .filter(i =>
+              i.name.toLowerCase().includes(focused.value.toLowerCase())
+            )
+            .slice(0, 25)
+        );
+      }
+
+      /* -------- AÑADIR -------- */
+      if (sub === "añadir") {
+        const items = await eco.getAllItems(guildId);
+
+        return interaction.respond(
+          items
+            .map(i => ({ name: i.itemName, value: i.itemName }))
+            .slice(0, 25)
+        );
+      }
+    }
+
+    return interaction.respond([]);
+  },
+
+  /* ====================================================================== */
+  /* EXECUTE                                                                */
+  /* ====================================================================== */
+
+  async execute(interaction) {
+    const sub = interaction.options.getSubcommand();
+
+    if (sub === "crear") return createHandler(interaction);
+    if (sub === "listar") return listHandler(interaction);
+    if (sub === "abrir") return openHandler(interaction);
+    if (sub === "info") return infoHandler(interaction);
+    if (sub === "meter") return meterHandler(interaction);
+    if (sub === "sacar") return sacarHandler(interaction);
+    if (sub === "añadir") return addHandler(interaction);
+    if (sub === "autorizar") return autorizarHandler(interaction);
+  },
 };

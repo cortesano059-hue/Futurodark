@@ -46,7 +46,14 @@ module.exports = {
 
   async getBalance(userId, guildId) {
     const u = await this.getUser(userId, guildId);
-    if (!u) return { money: 0, bank: 0, dailyClaim: 0, workCooldown: 0, trashCooldown: 0 };
+    if (!u)
+      return {
+        money: 0,
+        bank: 0,
+        dailyClaim: 0,
+        workCooldown: 0,
+        trashCooldown: 0,
+      };
 
     return {
       money: Number(u.money || 0),
@@ -79,12 +86,33 @@ module.exports = {
     return true;
   },
 
+  async addBank(userId, guildId, amount, type = "system") {
+    const u = await this.getUser(userId, guildId);
+    const n = Number(amount);
+    if (!u || n <= 0) return false;
+
+    u.bank = (u.bank || 0) + n;
+    await u.save();
+
+    logger.logTransaction?.({
+      userId,
+      guildId,
+      type,
+      amount: n,
+      to: "bank",
+    });
+
+    return true;
+  },
+
   async removeMoney(userId, guildId, amount, type = "system") {
     const u = await this.getUser(userId, guildId);
     const n = Number(amount);
-    if (!u) return { success: false, message: "Usuario no encontrado." };
+    if (!u)
+      return { success: false, message: "Usuario no encontrado." };
 
-    if ((u.money || 0) < n) return { success: false, message: "No tienes suficiente dinero." };
+    if ((u.money || 0) < n)
+      return { success: false, message: "No tienes suficiente dinero." };
 
     u.money = (u.money || 0) - n;
     await u.save();
@@ -105,7 +133,8 @@ module.exports = {
     const n = Number(amount);
     if (!u || n <= 0) return { success: false };
 
-    if ((u.money || 0) < n) return { success: false, message: "No tienes suficiente dinero." };
+    if ((u.money || 0) < n)
+      return { success: false, message: "No tienes suficiente dinero." };
 
     u.money -= n;
     u.bank = (u.bank || 0) + n;
@@ -128,7 +157,8 @@ module.exports = {
     const n = Number(amount);
     if (!u || n <= 0) return { success: false };
 
-    if ((u.bank || 0) < n) return { success: false, message: "No tienes suficiente banco." };
+    if ((u.bank || 0) < n)
+      return { success: false, message: "No tienes suficiente banco." };
 
     u.bank -= n;
     u.money = (u.money || 0) + n;
@@ -185,10 +215,26 @@ module.exports = {
   =========================== */
   async getItemByName(guildId, name) {
     if (!name) return null;
-    return Item.findOne({ guildId, itemName: { $regex: `^${name}$`, $options: "i" } });
+    return Item.findOne({
+      guildId,
+      itemName: { $regex: `^${name}$`, $options: "i" },
+    });
   },
 
-  async createItem(guildId, name, price = 0, desc = "", emoji = "📦", extra = {}) {
+  // 🔧 AÑADIDO: necesario para autocomplete / admin / shop
+  async getAllItems(guildId) {
+    if (!guildId) return [];
+    return Item.find({ guildId }).sort({ itemName: 1 });
+  },
+
+  async createItem(
+    guildId,
+    name,
+    price = 0,
+    desc = "",
+    emoji = "📦",
+    extra = {}
+  ) {
     const exists = await this.getItemByName(guildId, name);
     if (exists) return null;
 
@@ -214,7 +260,6 @@ module.exports = {
     return true;
   },
 
-  /* Inventory functions using itemName (string) */
   async getUserInventory(userId, guildId) {
     const data = await Inventory.find({ userId, guildId }).populate("itemId");
     return data.map((entry) => ({
@@ -226,7 +271,7 @@ module.exports = {
       type: entry.itemId?.type || "misc",
       usable: entry.itemId?.usable || false,
       sellable: entry.itemId?.sellable || false,
-      inventory: entry.itemId?.inventory || true,
+      inventory: entry.itemId?.inventory ?? true,
     }));
   },
 
@@ -234,9 +279,19 @@ module.exports = {
     const item = await this.getItemByName(guildId, itemName);
     if (!item) return false;
 
-    let slot = await Inventory.findOne({ userId, guildId, itemId: item._id });
+    let slot = await Inventory.findOne({
+      userId,
+      guildId,
+      itemId: item._id,
+    });
+
     if (!slot) {
-      slot = await Inventory.create({ userId, guildId, itemId: item._id, amount });
+      await Inventory.create({
+        userId,
+        guildId,
+        itemId: item._id,
+        amount,
+      });
     } else {
       slot.amount += amount;
       await slot.save();
@@ -244,16 +299,30 @@ module.exports = {
     return true;
   },
 
+  // 🔧 FIX CRÍTICO: /item quitar
   async removeItem(userId, guildId, itemName, amount = 1) {
     const item = await this.getItemByName(guildId, itemName);
-    if (!item) return { success: false };
+    if (!item) {
+      return { success: false, reason: "ITEM_NOT_FOUND" };
+    }
 
-    const slot = await Inventory.findOne({ userId, guildId, itemId: item._id });
-    if (!slot || slot.amount < amount) return { success: false };
+    const slot = await Inventory.findOne({
+      userId,
+      guildId,
+      itemId: item._id,
+    });
+
+    if (!slot || slot.amount < amount) {
+      return { success: false, reason: "NOT_ENOUGH_ITEMS" };
+    }
 
     slot.amount -= amount;
-    if (slot.amount <= 0) await slot.deleteOne();
-    else await slot.save();
+
+    if (slot.amount <= 0) {
+      await slot.deleteOne();
+    } else {
+      await slot.save();
+    }
 
     return { success: true };
   },
@@ -266,7 +335,11 @@ module.exports = {
      CONFIG: POLICÍA
   =========================== */
   async setPoliceRole(guildId, roleId) {
-    return PoliceConfig.findOneAndUpdate({ guildId }, { roleId }, { upsert: true, new: true });
+    return PoliceConfig.findOneAndUpdate(
+      { guildId },
+      { roleId },
+      { upsert: true, new: true }
+    );
   },
 
   async getPoliceRole(guildId) {
@@ -276,15 +349,13 @@ module.exports = {
 
   /* ===========================
      CONFIG: VENDER MARÍA
-     - setMariConfig / getMariConfig
-     - convenience setters setMariItem / setMariRole
-     - sellMari (logic)
   =========================== */
-
   async setMariConfig(guildId, data = {}) {
-    // data should be an object that can contain:
-    // { itemName, minConsume, maxConsume, minPrice, maxPrice, roleId }
-    return MariConfig.findOneAndUpdate({ guildId }, { $set: data }, { new: true, upsert: true });
+    return MariConfig.findOneAndUpdate(
+      { guildId },
+      { $set: data },
+      { new: true, upsert: true }
+    );
   },
 
   async getMariConfig(guildId) {
@@ -293,9 +364,7 @@ module.exports = {
 
   async setMariItem(guildId, itemName) {
     const cfg = await this.getMariConfig(guildId);
-    if (!cfg) {
-      return this.setMariConfig(guildId, { itemName });
-    }
+    if (!cfg) return this.setMariConfig(guildId, { itemName });
     cfg.itemName = itemName;
     await cfg.save();
     return cfg;
@@ -303,9 +372,7 @@ module.exports = {
 
   async setMariRole(guildId, roleId) {
     const cfg = await this.getMariConfig(guildId);
-    if (!cfg) {
-      return this.setMariConfig(guildId, { roleId });
-    }
+    if (!cfg) return this.setMariConfig(guildId, { roleId });
     cfg.roleId = roleId;
     await cfg.save();
     return cfg;
@@ -315,26 +382,33 @@ module.exports = {
     const cfg = await this.getMariConfig(guildId);
     if (!cfg) return { success: false, message: "Config no establecida." };
 
-    // Prepare safe numbers with defaults
     const itemName = cfg.itemName;
     const minConsume = Number(cfg.minConsume ?? 1);
     const maxConsume = Number(cfg.maxConsume ?? 1);
     const minPrice = Number(cfg.minPrice ?? 1);
     const maxPrice = Number(cfg.maxPrice ?? 1);
 
-    if (!itemName) return { success: false, message: "Item no configurado." };
-    if (minConsume > maxConsume || minPrice > maxPrice) return { success: false, message: "Configuración inválida." };
+    if (!itemName)
+      return { success: false, message: "Item no configurado." };
+    if (minConsume > maxConsume || minPrice > maxPrice)
+      return { success: false, message: "Configuración inválida." };
 
-    const consumeQty = Math.floor(Math.random() * (maxConsume - minConsume + 1)) + minConsume;
-    const unitPrice = Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
+    const consumeQty =
+      Math.floor(Math.random() * (maxConsume - minConsume + 1)) + minConsume;
+    const unitPrice =
+      Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
     const total = consumeQty * unitPrice;
 
-    // consume
-    const removed = await this.removeItem(userId, guildId, itemName, consumeQty);
-    if (!removed.success) return { success: false, message: "No tienes suficiente mercancía." };
+    const removed = await this.removeItem(
+      userId,
+      guildId,
+      itemName,
+      consumeQty
+    );
+    if (!removed.success)
+      return { success: false, message: "No tienes suficiente mercancía." };
 
-    // give money
-    await this.addMoney(userId, guildId, total, "mari_sell");
+    await this.addBank(userId, guildId, total, "mari_sell");
 
     return {
       success: true,

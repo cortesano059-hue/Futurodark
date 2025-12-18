@@ -3,7 +3,6 @@ const { Events } = require("discord.js");
 const safeReply = require("@src/utils/safeReply.js");
 const logger = require("@src/utils/logger.js");
 const handleHelpMenu = require("@src/handlers/helpMenuHandler.js");
-const backpackAutocomplete = require("@src/handlers/backpackAutocomplete.js");
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -15,14 +14,25 @@ module.exports = {
             /*                               AUTOCOMPLETE                                */
             /* -------------------------------------------------------------------------- */
             if (interaction.isAutocomplete()) {
-                try {
-                    return backpackAutocomplete.execute(interaction, client);
-                } catch (err) {
-                    logger.error(`🔴 Error en autocomplete:`, err);
+                const command = client.commands.get(interaction.commandName);
+
+                // Si el comando no define autocomplete, no hacemos nada
+                if (!command || typeof command.autocomplete !== "function") {
                     return interaction.respond([]);
                 }
-            }
 
+                try {
+                    await command.autocomplete(interaction, client);
+                } catch (err) {
+                    logger.error(
+                        `🔴 Error en autocomplete de /${interaction.commandName}:`,
+                        err
+                    );
+                    return interaction.respond([]);
+                }
+
+                return;
+            }
 
             /* -------------------------------------------------------------------------- */
             /*                             SLASH COMMANDS                                 */
@@ -39,12 +49,11 @@ module.exports = {
                     await command.execute(interaction, client);
                 } catch (err) {
                     logger.error(`🔴 Error ejecutando /${interaction.commandName}:`, err);
-
                     await safeReply(interaction, "❌ Error ejecutando este comando.");
                 }
+
                 return;
             }
-
 
             /* -------------------------------------------------------------------------- */
             /*                                   BOTONES                                  */
@@ -53,13 +62,15 @@ module.exports = {
 
                 // --- Botones del menú de comandos v3 (paginación) ---
                 if (interaction.customId.startsWith("help-page-")) {
-                    return handleHelpMenu(interaction, client); // ORDEN CORRECTO
+                    return handleHelpMenu(interaction, client);
                 }
 
                 let button = client.buttons.get(interaction.customId);
 
                 if (!button) {
-                    button = client.buttons.find(btn => btn.check && btn.check(interaction.customId));
+                    button = client.buttons.find(
+                        btn => btn.check && btn.check(interaction.customId)
+                    );
                 }
 
                 if (!button) return;
@@ -74,7 +85,6 @@ module.exports = {
                 return;
             }
 
-
             /* -------------------------------------------------------------------------- */
             /*                               SELECT MENUS                                 */
             /* -------------------------------------------------------------------------- */
@@ -82,13 +92,15 @@ module.exports = {
 
                 // --- Menú principal del comando /comandos V3 ---
                 if (interaction.customId.startsWith("help-category-")) {
-                    return handleHelpMenu(interaction, client); // ORDEN CORRECTO
+                    return handleHelpMenu(interaction, client);
                 }
 
                 let menu = client.selectMenus.get(interaction.customId);
 
                 if (!menu) {
-                    menu = client.selectMenus.find(m => m.check && m.check(interaction.customId));
+                    menu = client.selectMenus.find(
+                        m => m.check && m.check(interaction.customId)
+                    );
                 }
 
                 if (!menu) return;
@@ -102,7 +114,6 @@ module.exports = {
 
                 return;
             }
-
 
             /* -------------------------------------------------------------------------- */
             /*                                   MODALS                                   */

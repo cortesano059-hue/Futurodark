@@ -1,179 +1,308 @@
-// src/database/mongodb.js
-
 const mongoose = require("mongoose");
-const { Schema } = mongoose; // Desestructuramos Schema para usarlo más fácilmente
+const { Schema } = mongoose;
+
+/* ========================================================================== */
+/* MONGODB CONNECTION                                                         */
+/* ========================================================================== */
 
 if (process.env.RUNNING_BOT === "true") {
-    mongoose
-        .connect(process.env.MONGO_URI, {
-            serverSelectionTimeoutMS: 30000,
-            socketTimeoutMS: 45000,
-        })
-        .then(() => console.log("✅ MongoDB conectado"))
-        .catch((err) => console.error("❌ Error MongoDB:", err));
+  mongoose
+    .connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+    })
+    .then(() => console.log("✅ MongoDB conectado"))
+    .catch(err => console.error("❌ Error MongoDB:", err));
 }
 
 function getModel(name, schema) {
-    // FIX: Usamos esta estructura para evitar el OverwriteModelError si el modelo ya fue cargado.
-    return mongoose.models[name] || mongoose.model(name, schema);
+  return mongoose.models[name] || mongoose.model(name, schema);
 }
 
-/* ============================== USERS ============================== */
-const userSchema = new mongoose.Schema({
-    userId: String,
-    guildId: String,
+/* ========================================================================== */
+/* USERS                                                                       */
+/* ========================================================================== */
 
-    money: { type: Number, default: 0 },
-    bank: { type: Number, default: 5000 },
+const userSchema = new Schema({
+  userId: String,
+  guildId: String,
 
-    daily_claim_at: { type: Number, default: 0 },
-    work_cooldown: { type: Number, default: 0 },
-    trash_cooldown: { type: Number, default: 0 },
+  money: { type: Number, default: 0 },
+  bank: { type: Number, default: 5000 },
+
+  daily_claim_at: { type: Number, default: 0 },
+  work_cooldown: { type: Number, default: 0 },
+  trash_cooldown: { type: Number, default: 0 },
+
+  // 🔹 NUEVO: cooldown global robobadu (15 min)
+  robobadu_cooldown: { type: Number, default: 0 },
 });
 userSchema.index({ userId: 1, guildId: 1 }, { unique: true });
 const User = getModel("User", userSchema);
 
+/* ========================================================================== */
+/* ITEMS                                                                       */
+/* ========================================================================== */
 
-/* ============================== SUBESQUEMAS DE ÍTEM ============================== */
+const itemSchema = new Schema({
+  guildId: String,
+  itemName: String,
+  description: String,
+  emoji: String,
+  price: Number,
 
-// FIX DE CAST ERROR: Define la estructura de un Requisito para aceptar objetos.
-const requirementSchema = new Schema({
-    type: { 
-        type: String, 
-        required: true, 
-        enum: ['role', 'money', 'bank', 'item'] 
+  inventory: Boolean,
+  usable: Boolean,
+  sellable: Boolean,
+
+  stock: Number,
+  timeLimit: Number,
+
+  requirements: { type: [String], default: [] },
+  actions: { type: [String], default: [] },
+
+  type: {
+    type: String,
+    enum: ["normal", "container"],
+    default: "normal",
+  },
+
+  capacity: {
+    type: Number,
+    default: 0,
+  },
+
+  contents: [
+    {
+      itemId: {
+        type: Schema.Types.ObjectId,
+        ref: "Item",
+        required: true,
+      },
+      amount: {
+        type: Number,
+        default: 1,
+        min: 1,
+      },
     },
-    roleId: String,   
-    amount: Number,   
-    item: String,     
-}, { _id: false });
+  ],
 
-// Para las acciones, usaremos un Array de Objetos genéricos (JSON).
-const actionSchema = new Schema({
-    actionType: { type: String, required: true },
-    value: { type: Schema.Types.Mixed }, // Permite cualquier tipo de dato
-    target: String,
-}, { _id: false });
+  authorizedUsers: {
+    type: [String],
+    default: [],
+  },
 
-
-/* ============================== ITEMS ============================== */
-const itemSchema = new mongoose.Schema({
-    guildId: String,
-    itemName: String,
-    description: String,
-    emoji: String,
-    price: Number,
-    type: String,
-    inventory: Boolean,
-    usable: Boolean,
-    sellable: Boolean,
-    stock: Number,
-    timeLimit: Number,
-    // 🔥 CAMBIO CRÍTICO: Ahora acepta objetos (subdocumentos)
-    requirements: [requirementSchema], 
-    // Ahora acepta objetos (se usa para JSON complejo de acciones)
-    actions: [actionSchema], 
-    data: Object,
+  data: { type: Object, default: {} },
 });
 itemSchema.index({ guildId: 1, itemName: 1 }, { unique: true });
 const Item = getModel("Item", itemSchema);
 
+/* ========================================================================== */
+/* INVENTORY                                                                   */
+/* ========================================================================== */
 
-/* ============================== INVENTORY ============================== */
-const inventorySchema = new mongoose.Schema({
-    userId: String,
-    guildId: String,
-    itemId: { type: mongoose.Schema.Types.ObjectId, ref: "Item" },
-    amount: Number,
+const inventorySchema = new Schema({
+  userId: String,
+  guildId: String,
+  itemId: { type: Schema.Types.ObjectId, ref: "Item" },
+  amount: Number,
 });
-inventorySchema.index({ userId: 1, guildId: 1, itemId: 1 }, { unique: true });
+inventorySchema.index(
+  { userId: 1, guildId: 1, itemId: 1 },
+  { unique: true }
+);
 const Inventory = getModel("Inventory", inventorySchema);
 
-/* ============================== BACKPACK ============================== */
-const backpackSchema = new mongoose.Schema({
-    guildId: String,
-    ownerId: String,
-    name: String,
-    emoji: String,
-    description: String,
-    capacity: Number,
-    accessType: String,
-    allowedUsers: [String],
-    allowedRoles: [String],
-    items: [{
-        itemId: { type: mongoose.Schema.Types.ObjectId, ref: "Item" },
-        amount: Number
-    }]
+/* ========================================================================== */
+/* BACKPACK (LEGACY EXTENDIDO – NIVEL 2)                                       */
+/* ========================================================================== */
+
+const backpackSchema = new Schema(
+  {
+    guildId: { type: String, required: true, index: true },
+
+    ownerType: {
+      type: String,
+      enum: ["user", "role", "system"],
+      default: "user",
+      index: true,
+    },
+
+    ownerId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
+    name: {
+      type: String,
+      required: true,
+      index: true,
+    },
+
+    emoji: { type: String, default: null },
+    description: { type: String, default: null },
+
+    capacity: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 10,
+    },
+
+    accessType: {
+      type: String,
+      enum: ["owner_only", "custom"],
+      default: "owner_only",
+    },
+
+    allowedUsers: { type: [String], default: [] },
+    allowedRoles: { type: [String], default: [] },
+
+    items: [
+      {
+        itemId: { type: Schema.Types.ObjectId, ref: "Item", required: true },
+        amount: { type: Number, required: true, min: 1 },
+      },
+    ],
+  },
+  { timestamps: true }
+);
+
+backpackSchema.pre("save", function () {
+  if (!this.ownerType) {
+    this.ownerType = this.ownerId ? "user" : "system";
+  }
 });
-backpackSchema.index({ guildId: 1, ownerId: 1, name: 1 }, { unique: true });
+
+backpackSchema.index({ guildId: 1, name: 1 }, { unique: true });
 const Backpack = getModel("Backpack", backpackSchema);
 
-/* ============================== DUTY STATUS ============================== */
-const dutyStatusSchema = new mongoose.Schema({
-    userId: String,
-    guildId: String,
-    roleId: String,
-    startTime: Date,
-    lastPayment: Date,
-    channelId: String,
+/* ========================================================================== */
+/* DUTY STATUS                                                                */
+/* ========================================================================== */
+
+const dutyStatusSchema = new Schema({
+  userId: String,
+  guildId: String,
+  roleId: String,
+  startTime: Date,
+  lastPayment: Date,
+  channelId: String,
 });
 dutyStatusSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 const DutyStatus = getModel("DutyStatus", dutyStatusSchema);
 
-/* ============================== INCOME ROLE ============================== */
-const incomeRoleSchema = new mongoose.Schema({
-    guildId: String,
-    roleId: String,
-    incomePerHour: Number,
+/* ========================================================================== */
+/* INCOME ROLE                                                                */
+/* ========================================================================== */
+
+const incomeRoleSchema = new Schema({
+  guildId: String,
+  roleId: String,
+  incomePerHour: Number,
 });
 incomeRoleSchema.index({ guildId: 1, roleId: 1 }, { unique: true });
 const IncomeRole = getModel("IncomeRole", incomeRoleSchema);
 
-/* ============================== DNI ============================== */
-const dniSchema = new mongoose.Schema({
-    userId: String,
-    dni: String,
-    nombre: String,
-    apellido: String,
-    edad: Number,
-    nacionalidad: String,
-    psid: String,
-    guildId: String,
+/* ========================================================================== */
+/* DNI                                                                        */
+/* ========================================================================== */
+
+const dniSchema = new Schema({
+  userId: String,
+  dni: String,
+  nombre: String,
+  apellido: String,
+  edad: Number,
+  nacionalidad: String,
+  psid: String,
+  guildId: String,
 });
 dniSchema.index({ userId: 1 }, { unique: true });
 const Dni = getModel("Dni", dniSchema);
 
-/* ============================== POLICE CONFIG ============================== */
-const policeConfigSchema = new mongoose.Schema({
-    guildId: { type: String, unique: true },
-    roleId: String,
+/* ========================================================================== */
+/* POLICE CONFIG                                                              */
+/* ========================================================================== */
+
+const policeConfigSchema = new Schema({
+  guildId: { type: String, unique: true },
+  roleId: String,
 });
 const PoliceConfig = getModel("PoliceConfig", policeConfigSchema);
 
-/* ============================== MARI CONFIG ============================== */
-const mariConfigSchema = new mongoose.Schema({
-    guildId: { type: String, unique: true },
-    itemName: String,
-    roleId: String,
+/* ========================================================================== */
+/* MARI CONFIG                                                                */
+/* ========================================================================== */
 
-    minConsume: { type: Number, default: 1 },
-    maxConsume: { type: Number, default: 5 },
+const mariConfigSchema = new Schema({
+  guildId: { type: String, unique: true },
+  itemName: String,
+  roleId: String,
 
-    minPrice: { type: Number, default: 20 },
-    maxPrice: { type: Number, default: 50 },
+  minConsume: { type: Number, default: 1 },
+  maxConsume: { type: Number, default: 5 },
+
+  minPrice: { type: Number, default: 20 },
+  maxPrice: { type: Number, default: 50 },
 });
 const MariConfig = getModel("MariConfig", mariConfigSchema);
 
-/* ============================== EXPORT ============================== */
+/* ========================================================================== */
+/* BADULAQUE CONFIG                                                           */
+/* ========================================================================== */
+
+const badulaqueSchema = new Schema({
+  guildId: { type: String, required: true },
+  key: { type: String, required: true },
+
+  reward: {
+    itemName: { type: String, required: true },
+    amount: { type: Number, required: true, min: 1 },
+  },
+
+  image: { type: String, default: null },
+});
+badulaqueSchema.index({ guildId: 1, key: 1 }, { unique: true });
+const Badulaque = getModel("Badulaque", badulaqueSchema);
+
+/* ========================================================================== */
+/* BADULAQUE LOCAL COOLDOWN (30 MIN)                                           */
+/* ========================================================================== */
+
+const badulaqueLocalCooldownSchema = new Schema({
+  guildId: { type: String, required: true },
+  key: { type: String, required: true },
+
+  cooldownUntil: { type: Number, default: 0 },
+});
+
+badulaqueLocalCooldownSchema.index(
+  { guildId: 1, key: 1 },
+  { unique: true }
+);
+
+const BadulaqueLocalCooldown = getModel(
+  "BadulaqueLocalCooldown",
+  badulaqueLocalCooldownSchema
+);
+
+/* ========================================================================== */
+/* EXPORTS                                                                    */
+/* ========================================================================== */
+
 module.exports = {
-    mongoose,
-    User,
-    Item,
-    Inventory,
-    Backpack,
-    DutyStatus,
-    IncomeRole,
-    Dni,
-    PoliceConfig,
-    MariConfig,
+  mongoose,
+  User,
+  Item,
+  Inventory,
+  Backpack,
+  DutyStatus,
+  IncomeRole,
+  Dni,
+  PoliceConfig,
+  MariConfig,
+  Badulaque,
+  BadulaqueLocalCooldown,
 };
