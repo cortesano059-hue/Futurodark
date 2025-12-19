@@ -40,6 +40,7 @@
     "@logger": "src/utils/logger.js",
     "@economy": "src/database/economy.js",
     "@economyConfig": "src/economy/index.js",
-    "@transactionModel": "src/database/Transaction.js"
+    "@transactionModel": "src/database/Transaction.js",
+    "@items": "src/items"
   }
 }
