@@ -1,34 +1,39 @@
-const requireHandlers = require("./requires");
 const actionHandlers = require("./actions");
+const checkRequires = require("./requirementsEngine");
 
 async function runItem(item, ctx) {
-  const trigger = ctx.trigger; // "buy" | "use"
+  if (!item?.actions || !Array.isArray(item.actions)) return;
 
-  // =============================
-  // VALIDAR REQUIRES
-  // =============================
-  for (const req of item.requires?.[trigger] ?? []) {
-    const handler = requireHandlers[req.type];
-    if (!handler)
-      throw new Error(`Require no soportado: ${req.type}`);
+  for (const action of item.actions) {
+    try {
+      let type = action.type;
+      let raw = action.raw;
 
-    const ok = await handler(req, ctx);
-    if (!ok)
-      throw new Error("REQUIRE_NOT_MET");
-  }
+      // 🔧 NORMALIZAR ALIAS HUMANOS
+      if (type === "addrol") {
+        const roleId = raw.replace(/[<@&>]/g, "").split(":").pop();
+        type = "role";
+        raw = `role:add:${roleId}`;
+      }
 
-  // =============================
-  // EJECUTAR ACTIONS
-  // =============================
-  for (const action of item.actions?.[trigger] ?? []) {
-    const handler = actionHandlers[action.type];
-    if (!handler)
-      throw new Error(`Action no soportada: ${action.type}`);
+      if (type === "removerol") {
+        const roleId = raw.replace(/[<@&>]/g, "").split(":").pop();
+        type = "role";
+        raw = `role:remove:${roleId}`;
+      }
 
-    await handler(action, ctx);
+      const handler = actionHandlers[type];
+      if (!handler) continue;
+
+      await handler({ ...action, type, raw }, ctx);
+
+    } catch (err) {
+      console.error("❌ Error ejecutando action:", err);
+    }
   }
 }
 
 module.exports = {
-  runItem
+  runItem,
+  checkRequires, // ✅ AHORA EXISTE
 };

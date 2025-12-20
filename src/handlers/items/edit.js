@@ -1,56 +1,76 @@
 const safeReply = require("@safeReply");
-const eco = require("@economy");
+const { Item } = require("@database/mongodb");
 
 module.exports = async (interaction) => {
   const guildId = interaction.guild.id;
-
   const name = interaction.options.getString("nombre");
-  const item = await eco.getItemByName(guildId, name);
 
+  const item = await Item.findOne({ guildId, itemName: name });
   if (!item) {
     return safeReply(interaction, "❌ Ese item no existe.");
   }
 
-  const newName = interaction.options.getString("nuevo_nombre");
-  const price = interaction.options.getInteger("precio");
-  const desc = interaction.options.getString("descripcion");
-  const emoji = interaction.options.getString("emoji");
-  const inventory = interaction.options.getBoolean("inventariable");
-  const usable = interaction.options.getBoolean("usable");
-  const sellable = interaction.options.getBoolean("vendible");
-  const stock = interaction.options.getInteger("stock");
-  const time = interaction.options.getInteger("tiempo");
-  const req = interaction.options.getString("requisitos");
-  const act = interaction.options.getString("acciones");
+  /* ===============================
+   * CAMPOS BÁSICOS
+   * =============================== */
+  const basicFields = {
+    itemName: interaction.options.getString("nuevo_nombre"),
+    price: interaction.options.getInteger("precio"),
+    description: interaction.options.getString("descripcion"),
+    emoji: interaction.options.getString("emoji"),
+    inventory: interaction.options.getBoolean("inventariable"),
+    usable: interaction.options.getBoolean("usable"),
+    sellable: interaction.options.getBoolean("vendible"),
+    stock: interaction.options.getInteger("stock"),
+    timeLimit: interaction.options.getInteger("tiempo"),
+  };
 
-  if (newName) item.itemName = newName;
-  if (price !== null) item.price = price;
-  if (desc !== null) item.description = desc;
-  if (emoji) item.emoji = emoji;
+  Object.entries(basicFields).forEach(([k, v]) => {
+    if (v !== null && v !== undefined) item[k] = v;
+  });
 
-  if (inventory !== null) item.inventory = inventory;
-  if (usable !== null) item.usable = usable;
-  if (sellable !== null) item.sellable = sellable;
+  /* ===============================
+   * REQUISITOS (SIEMPRE REEMPLAZAR)
+   * =============================== */
+  const newRequirements = [];
 
-  if (stock !== null) item.stock = stock;
-  if (time !== null) item.timeLimit = time;
-
-  if (req !== null) {
-    item.requirements = req
-      ? req.split(";").map(t => t.trim())
-      : [];
+  const roleRequire = interaction.options.getRole("rolrequire");
+  if (roleRequire) {
+    newRequirements.push(`role:${roleRequire.id}`);
   }
 
-  if (act !== null) {
-    item.actions = act
-      ? act.split(";").map(t => t.trim())
-      : [];
+  // 🔑 CLAVE DEL FIX:
+  // Siempre sobrescribimos, incluso si queda vacío
+  item.requirements = newRequirements;
+
+  /* ===============================
+   * ACCIONES (REEMPLAZAR)
+   * =============================== */
+  const newActions = [];
+
+  const addRole = interaction.options.getRole("addrol");
+  if (addRole) {
+    newActions.push(`role:${addRole.id}:add`);
+  }
+
+  const addItem = interaction.options.getString("additem");
+  if (addItem) {
+    newActions.push(`item:${addItem}:1`);
+  }
+
+  const message = interaction.options.getString("message");
+  if (message) {
+    newActions.push(`message:${message}`);
+  }
+
+  if (newActions.length > 0) {
+    item.actions = newActions;
   }
 
   await item.save();
 
   return safeReply(
     interaction,
-    `✏️ Item **${item.itemName}** actualizado.`
+    "✅ Item actualizado correctamente.\n(Requisitos y acciones reemplazados)"
   );
 };

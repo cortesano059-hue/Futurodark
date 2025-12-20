@@ -1,26 +1,28 @@
-const Inventory = require("@database/mongodb").Inventory;
+const eco = require("@economy");
 
 module.exports = async (action, ctx) => {
-  const { user, guild } = ctx;
-  const amount = action.amount ?? 1;
+  try {
+    if (!action?.raw || !ctx?.interaction) return;
 
-  let inv = await Inventory.findOne({
-    userId: user.id,
-    guildId: guild.id
-  });
+    const interaction = ctx.interaction;
+    const userId = interaction.user.id;
+    const guildId = interaction.guild.id;
 
-  if (!inv) {
-    inv = new Inventory({
-      userId: user.id,
-      guildId: guild.id,
-      items: {}
-    });
+    // Formato: item:nombre:cantidad
+    const parts = action.raw.split(":");
+    if (parts.length < 2) return;
+
+    const itemName = parts[1];
+    let amount = parseInt(parts[2], 10);
+
+    if (!itemName) return;
+    if (isNaN(amount) || amount <= 0) amount = 1;
+
+    // ✅ FUNCIÓN REAL DE TU ECONOMY
+    await eco.addToInventory(userId, guildId, itemName, amount);
+
+  } catch (err) {
+    console.error("❌ Error en action item:", err);
+    // No lanzar error para no romper /item usar
   }
-
-  inv.items[action.item] = (inv.items[action.item] ?? 0) + amount;
-
-  if (inv.items[action.item] <= 0)
-    delete inv.items[action.item];
-
-  await inv.save();
 };

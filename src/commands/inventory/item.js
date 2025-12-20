@@ -46,7 +46,7 @@ module.exports = {
     )
 
     /* ===============================
-     * EDITAR
+     * EDITAR (UX AMPLIADO)
      * =============================== */
     .addSubcommand(sub =>
       sub.setName("editar")
@@ -57,6 +57,8 @@ module.exports = {
             .setRequired(true)
             .setAutocomplete(true)
         )
+
+        /* ===== CAMPOS EXISTENTES ===== */
         .addStringOption(o => o.setName("nuevo_nombre").setDescription("Nuevo nombre"))
         .addIntegerOption(o => o.setName("precio").setDescription("Nuevo precio"))
         .addStringOption(o => o.setName("descripcion").setDescription("Nueva descripción"))
@@ -66,8 +68,58 @@ module.exports = {
         .addBooleanOption(o => o.setName("vendible").setDescription("Vendible"))
         .addIntegerOption(o => o.setName("stock").setDescription("Nuevo stock"))
         .addIntegerOption(o => o.setName("tiempo").setDescription("Nuevo tiempo límite"))
-        .addStringOption(o => o.setName("requisitos").setDescription("Requisitos"))
-        .addStringOption(o => o.setName("acciones").setDescription("Acciones"))
+
+        /* ===== SISTEMA STRING (AVANZADO) ===== */
+        .addStringOption(o => o.setName("requisitos").setDescription("Requisitos (formato avanzado)"))
+        .addStringOption(o => o.setName("acciones").setDescription("Acciones (formato avanzado)"))
+
+        /* ===== REQUISITOS INTUITIVOS ===== */
+        .addRoleOption(o =>
+          o.setName("rolrequire")
+            .setDescription("Requerir un rol")
+        )
+        .addIntegerOption(o =>
+          o.setName("balancerequire")
+            .setDescription("Dinero requerido (wallet)")
+            .setMinValue(0)
+        )
+        .addStringOption(o =>
+          o.setName("itemrequire")
+            .setDescription("Item requerido (nombre:cantidad)")
+        )
+
+        /* ===== ACCIONES INTUITIVAS ===== */
+        .addRoleOption(o =>
+          o.setName("addrol")
+            .setDescription("Rol a añadir")
+        )
+        .addRoleOption(o =>
+          o.setName("removerol")
+            .setDescription("Rol a quitar")
+        )
+        .addIntegerOption(o =>
+          o.setName("addmoney")
+            .setDescription("Añadir dinero")
+        )
+        .addIntegerOption(o =>
+          o.setName("removemoney")
+            .setDescription("Quitar dinero")
+        )
+
+        /* 🆕 ITEMS */
+        .addStringOption(o =>
+          o.setName("additem")
+            .setDescription("Dar item (nombre:cantidad)")
+        )
+        .addStringOption(o =>
+          o.setName("removeitem")
+            .setDescription("Quitar item (nombre:cantidad)")
+        )
+
+        .addStringOption(o =>
+          o.setName("message")
+            .setDescription("Mensaje personalizado")
+        )
     )
 
     /* ===============================
@@ -178,7 +230,6 @@ module.exports = {
       items = inv.map(i => i.itemName);
 
     } else if (sub === "quitar") {
-      // 🔑 FORMA CORRECTA EN AUTOCOMPLETE
       const targetId = interaction.options.get("usuario")?.value;
       if (!targetId) return interaction.respond([]);
 

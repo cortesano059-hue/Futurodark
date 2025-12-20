@@ -1,9 +1,30 @@
-module.exports = async (action, ctx) => {
-  const content = action.content ?? "Acción ejecutada.";
+const { EmbedBuilder } = require("discord.js");
 
-  if (ctx.interaction.replied || ctx.interaction.deferred) {
-    await ctx.interaction.followUp({ content, ephemeral: true });
-  } else {
-    await ctx.interaction.reply({ content, ephemeral: true });
+module.exports = async (action, ctx) => {
+  try {
+    if (!ctx?.interaction) return;
+
+    const interaction = ctx.interaction;
+    const itemName = ctx.item?.itemName ?? "el item";
+
+    let text = action.text || "";
+    text = text.replace(/{item}/gi, itemName);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setAuthor({
+        name: interaction.user.username,
+        iconURL: interaction.user.displayAvatarURL(),
+      })
+      .setDescription(text)
+      .setTimestamp();
+
+    await interaction.followUp({
+      embeds: [embed],
+      ephemeral: true,
+    });
+
+  } catch (err) {
+    console.error("❌ Error en action message:", err);
   }
 };

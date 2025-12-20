@@ -1,49 +1,69 @@
-const { EmbedBuilder } = require("discord.js");
-const safeReply = require("@safeReply");
+const { runItem, checkRequires } = require("@items/engine");
 const eco = require("@economy");
-const requirements = require("@src/economy/requirementsEngine");
-const actions = require("@src/economy/actionsEngine");
 
-module.exports = async (interaction) => {
-  const guildId = interaction.guild.id;
-  const userId = interaction.user.id;
+module.exports = async function useHandler(interaction) {
+  // RESPONDER INMEDIATAMENTE
+  await interaction.reply({
+    content: "⏳ Usando item...",
+    ephemeral: true,
+  });
 
-  const name = interaction.options.getString("nombre");
-  const qty = interaction.options.getInteger("cantidad") || 1;
+  try {
+    const guildId = interaction.guild.id;
+    const userId = interaction.user.id;
 
-  const item = await eco.getItemByName(guildId, name);
-  if (!item) return safeReply(interaction, "❌ Ese item no existe.");
+    const itemName = interaction.options.getString("nombre");
+    const cantidad = interaction.options.getInteger("cantidad") ?? 1;
 
-  if (!item.usable)
-    return safeReply(interaction, `❌ El item **${item.itemName}** no es usable.`);
+    const item = await eco.getItemByName(guildId, itemName);
+    if (!item) {
+      return interaction.editReply("❌ Ese item no existe.");
+    }
 
-  if (item.inventory) {
-    const inv = await eco.getUserInventory(userId, guildId);
-    const owned = inv.find(i => i.itemName.toLowerCase() === name.toLowerCase());
+    if (!item.usable) {
+      return interaction.editReply("❌ Este item no se puede usar.");
+    }
 
-    if (!owned || owned.amount < qty)
-      return safeReply(interaction, `❌ No tienes suficientes **${item.itemName}**.`);
+    // VALIDAR REQUISITOS
+    await checkRequires(item, {
+      interaction,
+      user: interaction.user,
+      guild: interaction.guild,
+    });
+
+    // CONSUMIR ITEM
+    const removed = await eco.removeItem(
+      userId,
+      guildId,
+      itemName,
+      cantidad
+    );
+
+    if (!removed.success) {
+      return interaction.editReply("❌ No tienes suficientes items.");
+    }
+
+    // EJECUTAR ACCIONES
+    for (let i = 0; i < cantidad; i++) {
+      await runItem(item, {
+        interaction,
+        user: interaction.user,
+        guild: interaction.guild,
+      });
+    }
+
+    // MENSAJE FINAL SI NO HUBO MESSAGE ACTION
+    return interaction.editReply("✅ Item usado correctamente.");
+
+  } catch (err) {
+    console.error("❌ Error en /item usar:", err);
+
+    if (err.message === "REQUIRE_NOT_MET") {
+      return interaction.editReply(
+        "❌ No cumples los requisitos para usar este item."
+      );
+    }
+
+    return interaction.editReply("❌ Error interno al usar el item.");
   }
-
-  const userData = {
-    money: (await eco.getBalance(userId, guildId)).money,
-    inventory: await eco.getUserInventory(userId, guildId),
-  };
-
-  const valid = await requirements.validateRequirements(interaction, item, userData);
-  if (!valid.success) return safeReply(interaction, valid.message);
-
-  const msgs = await actions.executeActions(interaction, item, userId, guildId);
-
-  if (item.inventory) {
-    await eco.removeItem(userId, guildId, name, qty);
-  }
-
-  const embed = new EmbedBuilder()
-    .setTitle(`🧪 Usaste ${item.itemName}`)
-    .setColor("#2ecc71")
-    . setDescription(msgs.length ? msgs.join("\n") : "✔️ Item usado.")
-    .addFields({ name: "Cantidad usada", value: `${qty}` });
-
-  return safeReply(interaction, { embeds: [embed] });
 };
