@@ -1,13 +1,6 @@
 const safeReply = require("@safeReply");
 const eco = require("@economy");
 
-// helpers locales
-function parseList(str) {
-  return str
-    ? str.split(";").map(t => t.trim()).filter(Boolean)
-    : [];
-}
-
 module.exports = async (interaction) => {
   const guildId = interaction.guild.id;
 
@@ -22,16 +15,10 @@ module.exports = async (interaction) => {
   const stock = interaction.options.getInteger("stock");
   const time = interaction.options.getInteger("tiempo");
 
-  const req = interaction.options.getString("requisitos");
-  const act = interaction.options.getString("acciones");
-
   const exists = await eco.getItemByName(guildId, name);
   if (exists) {
     return safeReply(interaction, "❌ Ya existe ese item.");
   }
-
-  const requirements = parseList(req);
-  const actions = parseList(act);
 
   const payload = {
     inventory: inventory ?? true,
@@ -40,21 +27,9 @@ module.exports = async (interaction) => {
     stock: stock ?? -1,
     timeLimit: time ?? 0,
 
-    // 🔴 LEGACY (NO SE TOCA)
-    requirements,
-    actions,
-
-    // 🆕 NUEVO SISTEMA (ENGINE)
-    requires: {
-      buy: requirements,
-      use: requirements,
-    },
-    actionsV2: {
-      buy: actions,
-      use: actions,
-    },
-
-    data: {},
+    // comportamiento vacío por defecto
+    actions: [],
+    requirements: [],
   };
 
   const item = await eco.createItem(
@@ -72,6 +47,6 @@ module.exports = async (interaction) => {
 
   return safeReply(
     interaction,
-    `✅ Item **${name}** creado correctamente.`
+    `✅ Item **${name}** creado correctamente.\nDefine su comportamiento con el comando correspondiente.`
   );
 };

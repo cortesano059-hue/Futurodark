@@ -1,4 +1,3 @@
-// src/commands/inventory/item.js
 const {
   SlashCommandBuilder,
   PermissionFlagsBits,
@@ -16,6 +15,7 @@ const removeHandler = require("@handlers/items/remove");
 const deleteHandler = require("@handlers/items/delete");
 const editHandler = require("@handlers/items/edit");
 const createHandler = require("@handlers/items/create");
+const setHandler = require("@handlers/items/set"); // 🆕 NUEVO
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -37,16 +37,14 @@ module.exports = {
         .addStringOption(o => o.setName("descripcion").setDescription("Descripción"))
         .addStringOption(o => o.setName("emoji").setDescription("Emoji"))
         .addBooleanOption(o => o.setName("inventariable").setDescription("¿Se guarda en inventario?"))
-        .addBooleanOption(o => o.setName("usable").setDescription("¿Se usa con /item usar?"))
+        .addBooleanOption(o => o.setName("usable").setDescription("¿Se puede usar?"))
         .addBooleanOption(o => o.setName("vendible").setDescription("¿Se puede vender?"))
         .addIntegerOption(o => o.setName("stock").setDescription("Stock (-1 ilimitado)"))
         .addIntegerOption(o => o.setName("tiempo").setDescription("Tiempo límite en ms"))
-        .addStringOption(o => o.setName("requisitos").setDescription("Requisitos separados por ;"))
-        .addStringOption(o => o.setName("acciones").setDescription("Acciones separados por ;"))
     )
 
     /* ===============================
-     * EDITAR (UX AMPLIADO)
+     * EDITAR
      * =============================== */
     .addSubcommand(sub =>
       sub.setName("editar")
@@ -57,8 +55,6 @@ module.exports = {
             .setRequired(true)
             .setAutocomplete(true)
         )
-
-        /* ===== CAMPOS EXISTENTES ===== */
         .addStringOption(o => o.setName("nuevo_nombre").setDescription("Nuevo nombre"))
         .addIntegerOption(o => o.setName("precio").setDescription("Nuevo precio"))
         .addStringOption(o => o.setName("descripcion").setDescription("Nueva descripción"))
@@ -68,45 +64,52 @@ module.exports = {
         .addBooleanOption(o => o.setName("vendible").setDescription("Vendible"))
         .addIntegerOption(o => o.setName("stock").setDescription("Nuevo stock"))
         .addIntegerOption(o => o.setName("tiempo").setDescription("Nuevo tiempo límite"))
+    )
 
-        /* ===== SISTEMA STRING (AVANZADO) ===== */
-        .addStringOption(o => o.setName("requisitos").setDescription("Requisitos (formato avanzado)"))
-        .addStringOption(o => o.setName("acciones").setDescription("Acciones (formato avanzado)"))
+    /* ===============================
+     * SET (ACCIONES + REQUISITOS)
+     * =============================== */
+    .addSubcommand(sub =>
+      sub.setName("set")
+        .setDescription("Configura acciones y requisitos del item.")
 
-        /* ===== REQUISITOS INTUITIVOS ===== */
-        .addRoleOption(o =>
-          o.setName("rolrequire")
-            .setDescription("Requerir un rol")
-        )
-        .addIntegerOption(o =>
-          o.setName("balancerequire")
-            .setDescription("Dinero requerido (wallet)")
-            .setMinValue(0)
-        )
+        // ITEM
         .addStringOption(o =>
-          o.setName("itemrequire")
-            .setDescription("Item requerido (nombre:cantidad)")
+          o.setName("item")
+            .setDescription("Item")
+            .setRequired(true)
+            .setAutocomplete(true)
         )
 
-        /* ===== ACCIONES INTUITIVAS ===== */
+        // ===== ROLES =====
         .addRoleOption(o =>
-          o.setName("addrol")
-            .setDescription("Rol a añadir")
+          o.setName("addrole")
+            .setDescription("Rol que se dará al usar el item")
         )
         .addRoleOption(o =>
-          o.setName("removerol")
-            .setDescription("Rol a quitar")
+          o.setName("removerole")
+            .setDescription("Rol que se quitará al usar el item")
         )
+
+        // ===== DINERO =====
         .addIntegerOption(o =>
           o.setName("addmoney")
-            .setDescription("Añadir dinero")
+            .setDescription("Dinero que se dará (wallet)")
         )
         .addIntegerOption(o =>
           o.setName("removemoney")
-            .setDescription("Quitar dinero")
+            .setDescription("Dinero que se quitará (wallet)")
+        )
+        .addIntegerOption(o =>
+          o.setName("addmoneybank")
+            .setDescription("Dinero que se dará al banco")
+        )
+        .addIntegerOption(o =>
+          o.setName("removemoneybank")
+            .setDescription("Dinero que se quitará del banco")
         )
 
-        /* 🆕 ITEMS */
+        // ===== ITEMS =====
         .addStringOption(o =>
           o.setName("additem")
             .setDescription("Dar item (nombre:cantidad)")
@@ -116,9 +119,24 @@ module.exports = {
             .setDescription("Quitar item (nombre:cantidad)")
         )
 
+        // ===== MENSAJE =====
         .addStringOption(o =>
-          o.setName("message")
-            .setDescription("Mensaje personalizado")
+          o.setName("sendmessage")
+            .setDescription("Mensaje personalizado al usar el item")
+        )
+
+        // ===== REQUISITOS =====
+        .addRoleOption(o =>
+          o.setName("requirerole")
+            .setDescription("Requerir rol para usar el item")
+        )
+        .addStringOption(o =>
+          o.setName("requireitem")
+            .setDescription("Requerir item (nombre:cantidad)")
+        )
+        .addIntegerOption(o =>
+          o.setName("requiremoney")
+            .setDescription("Dinero requerido para usar el item")
         )
     )
 
@@ -217,25 +235,16 @@ module.exports = {
    * ============================================================ */
   async autocomplete(interaction) {
     const focused = interaction.options.getFocused(true);
-    if (focused.name !== "nombre") return;
+    if (focused.name !== "nombre" && focused.name !== "item") return;
 
-    const sub = interaction.options.getSubcommand();
     const guildId = interaction.guild.id;
     const userId = interaction.user.id;
 
     let items = [];
 
-    if (sub === "usar") {
+    if (interaction.options.getSubcommand() === "usar") {
       const inv = await eco.getUserInventory(userId, guildId);
       items = inv.map(i => i.itemName);
-
-    } else if (sub === "quitar") {
-      const targetId = interaction.options.get("usuario")?.value;
-      if (!targetId) return interaction.respond([]);
-
-      const inv = await eco.getUserInventory(targetId, guildId);
-      items = inv.map(i => i.itemName);
-
     } else {
       const all = await eco.getAllItems(guildId);
       items = all.map(i => i.itemName);
@@ -256,7 +265,7 @@ module.exports = {
     const sub = interaction.options.getSubcommand();
 
     const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
-    const adminCmds = ["crear", "editar", "eliminar", "dar", "quitar"];
+    const adminCmds = ["crear", "editar", "eliminar", "dar", "quitar", "set"];
 
     if (adminCmds.includes(sub) && !isAdmin) {
       return safeReply(interaction, "❌ No tienes permisos para esto.", true);
@@ -271,6 +280,7 @@ module.exports = {
       if (sub === "comprar") return buyHandler(interaction);
       if (sub === "info") return infoHandler(interaction);
       if (sub === "usar") return useHandler(interaction);
+      if (sub === "set") return setHandler(interaction);
     } catch (err) {
       console.error("❌ Error en /item:", err);
       return safeReply(interaction, "❌ Ocurrió un error ejecutando el comando.");

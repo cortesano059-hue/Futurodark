@@ -1,80 +1,44 @@
-const { EmbedBuilder } = require("discord.js");
-const safeReply = require("@safeReply");
 const eco = require("@economy");
+const { EmbedBuilder } = require("discord.js");
 
-function formatRequirement(req, guild) {
-  if (req.startsWith("role:")) {
-    const id = req.split(":")[1];
-    return `🛂 **Rol requerido:** <@&${id}>`;
-  }
+module.exports = async function infoHandler(interaction) {
+  await interaction.deferReply({ ephemeral: true });
 
-  if (req.startsWith("balance:")) {
-    const [, , amount] = req.split(":");
-    return `💰 **Dinero requerido:** ${Number(amount).toLocaleString()}`;
-  }
+  try {
+    const guildId = interaction.guild.id;
+    const itemName = interaction.options.getString("nombre");
 
-  if (req.startsWith("item:")) {
-    const [, name, amount = 1] = req.split(":");
-    return `📦 **Item requerido:** ${name} x${amount}`;
-  }
+    const item = await eco.getItemByName(guildId, itemName);
+    if (!item) {
+      return interaction.editReply("❌ Ese item no existe.");
+    }
 
-  return `• ${req}`;
-}
+    /* ======================================================
+     * EMBED BASE
+     * ====================================================== */
+    const embed = new EmbedBuilder()
+      .setColor(0x1f2937)
+      .setTitle(`${item.emoji ?? "📦"} ${item.itemName}`)
+      .setDescription(item.description || "Sin descripción.")
+      .setFooter({ text: "Sistema de items • Dark RP" })
+      .setTimestamp();
 
-function formatAction(act, guild) {
-  if (act.startsWith("role:")) {
-    const [, id, mode] = act.split(":");
-    return mode === "remove"
-      ? `➖ **Quita rol:** <@&${id}>`
-      : `➕ **Da rol:** <@&${id}>`;
-  }
-
-  if (act.startsWith("balance:")) {
-    const [, , amount] = act.split(":");
-    return amount.startsWith("-")
-      ? `➖ **Quita dinero:** ${Number(amount.slice(1)).toLocaleString()}`
-      : `➕ **Da dinero:** ${Number(amount).toLocaleString()}`;
-  }
-
-  if (act.startsWith("item:")) {
-    const [, name, amount = 1] = act.split(":");
-    return amount.startsWith("-")
-      ? `➖ **Quita item:** ${name} x${Math.abs(amount)}`
-      : `📦 **Da item:** ${name} x${amount}`;
-  }
-
-  if (act.startsWith("message:")) {
-    return `💬 **Mensaje personalizado**`;
-  }
-
-  return `• ${act}`;
-}
-
-module.exports = async (interaction) => {
-  const guildId = interaction.guild.id;
-  const name = interaction.options.getString("nombre");
-
-  const item = await eco.getItemByName(guildId, name);
-  if (!item) {
-    return safeReply(interaction, "❌ Ese item no existe.");
-  }
-
-  const embed = new EmbedBuilder()
-    .setTitle(`${item.emoji ?? "📦"} ${item.itemName}`)
-    .setDescription(item.description || "*Sin descripción*")
-    .addFields(
+    /* ======================================================
+     * INFO DEL ITEM (INLINE GRID)
+     * ====================================================== */
+    embed.addFields(
       {
         name: "💰 Precio",
-        value: item.price.toLocaleString(),
+        value: `${Number(item.price ?? 0).toLocaleString("es-ES")} $`,
         inline: true,
       },
       {
-        name: "📦 Inventariable",
+        name: "🎒 Inventario",
         value: item.inventory ? "Sí" : "No",
         inline: true,
       },
       {
-        name: "🧪 Usable",
+        name: "🧩 Usable",
         value: item.usable ? "Sí" : "No",
         inline: true,
       },
@@ -85,7 +49,10 @@ module.exports = async (interaction) => {
       },
       {
         name: "📦 Stock",
-        value: item.stock === -1 ? "Ilimitado" : item.stock.toString(),
+        value:
+          item.stock === -1 || item.stock == null
+            ? "Ilimitado"
+            : item.stock.toString(),
         inline: true,
       },
       {
@@ -95,32 +62,140 @@ module.exports = async (interaction) => {
       }
     );
 
-  /* ===============================
-   * REQUISITOS
-   * =============================== */
-  const requirements = item.requirements?.length
-    ? item.requirements.map(r => formatRequirement(r, interaction.guild)).join("\n")
-    : "Ninguno";
+    /* ======================================================
+     * REQUISITOS
+     * ====================================================== */
+    if (Array.isArray(item.requirements) && item.requirements.length > 0) {
+      const reqLines = [];
 
-  embed.addFields({
-    name: "📜 Requisitos",
-    value: requirements,
-  });
+      for (const req of item.requirements) {
+        if (typeof req !== "string") continue;
 
-  /* ===============================
-   * ACCIONES
-   * =============================== */
-  const actions = item.actions?.length
-    ? item.actions.map(a => formatAction(a, interaction.guild)).join("\n")
-    : "Ninguna";
+        const parts = req.split(":");
+        const type = parts[0];
 
-  embed.addFields({
-    name: "⚙️ Acciones",
-    value: actions,
-  });
+        if (type === "role") {
+          reqLines.push(`🎭 Requiere el rol <@&${parts[1]}>`);
+        }
 
-  return interaction.reply({
-    embeds: [embed],
-    ephemeral: true,
-  });
+        if (type === "money") {
+          reqLines.push(
+            `💰 Requiere al menos **${Number(parts[1]).toLocaleString("es-ES")} $**`
+          );
+        }
+
+        if (type === "item") {
+          const name = parts[1];
+          const qty = Number(parts[2] ?? 1);
+          reqLines.push(`📦 Requiere **${name} x${qty}**`);
+        }
+      }
+
+      embed.addFields({
+        name: "🔒 Requisitos",
+        value: reqLines.join("\n"),
+      });
+    }
+
+    /* ======================================================
+     * ACCIONES (AGRUPADAS + TEXTO COMPLETO)
+     * ====================================================== */
+    if (Array.isArray(item.actions) && item.actions.length > 0) {
+      const give = [];
+      const take = [];
+      const extra = [];
+
+      for (const action of item.actions) {
+        if (typeof action !== "string") continue;
+
+        const parts = action.split(":");
+        const type = parts[0];
+
+        // -------- ROLES --------
+        if (type === "role") {
+          const roleId = parts[1];
+          const mode = parts[2] ?? "add";
+
+          if (mode === "add") {
+            give.push(`🎭 Otorga el rol <@&${roleId}>`);
+          } else {
+            take.push(`🎭 Quita el rol <@&${roleId}>`);
+          }
+        }
+
+        // -------- MONEY --------
+        if (type === "money") {
+          const mode = parts[1];
+          const amount = Number(parts[2] ?? 0);
+
+          if (mode === "add") {
+            give.push(`💰 Da **${amount.toLocaleString("es-ES")} $**`);
+          } else {
+            take.push(`💸 Quita **${amount.toLocaleString("es-ES")} $**`);
+          }
+        }
+
+        // -------- BANK --------
+        if (type === "bank") {
+          const mode = parts[1];
+          const amount = Number(parts[2] ?? 0);
+
+          if (mode === "add") {
+            give.push(
+              `🏦 Añade **${amount.toLocaleString("es-ES")} $** al banco`
+            );
+          } else {
+            take.push(
+              `🏦 Retira **${amount.toLocaleString("es-ES")} $** del banco`
+            );
+          }
+        }
+
+        // -------- ITEMS --------
+        if (type === "item") {
+          give.push(
+            `📦 Da **${parts[1]} x${Number(parts[2] ?? 1)}**`
+          );
+        }
+
+        if (type === "itemremove") {
+          take.push(
+            `📦 Quita **${parts[1]} x${Number(parts[2] ?? 1)}**`
+          );
+        }
+
+        // -------- MESSAGE --------
+        if (type === "message") {
+          extra.push("💬 Muestra un mensaje personalizado");
+        }
+      }
+
+      const blocks = [];
+
+      if (give.length > 0) {
+        blocks.push(`🎁 **Otorga**\n${give.join("\n")}`);
+      }
+
+      if (take.length > 0) {
+        blocks.push(`📤 **Quita**\n${take.join("\n")}`);
+      }
+
+      if (extra.length > 0) {
+        blocks.push(`⚙️ **Extra**\n${extra.join("\n")}`);
+      }
+
+      if (blocks.length > 0) {
+        embed.addFields({
+          name: "⚙️ Acciones al usarlo",
+          value: blocks.join("\n\n"),
+        });
+      }
+    }
+
+    return interaction.editReply({ embeds: [embed] });
+
+  } catch (err) {
+    console.error("❌ Error en /item info:", err);
+    return interaction.editReply("❌ Error al mostrar la información del item.");
+  }
 };
