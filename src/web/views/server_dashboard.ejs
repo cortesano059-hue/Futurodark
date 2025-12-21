@@ -95,41 +95,47 @@
             </div>
             
             <div class="card" id="settings-card" style="display:none;">
-                <h3 style="margin:0 0 15px 0; font-size:16px;">Configuración del servidor</h3>
-                <div style="display:flex; flex-direction:column; gap:10px; max-width:560px;">
-                    <label>Prefijo de comandos</label>
-                    <input id="cfg-prefix" class="eco-input" placeholder="." />
+                        <h3 style="margin:0 0 15px 0; font-size:18px;">Configuración</h3>
+                        <div style="display:flex; gap:24px; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:280px;">
+                                <label style="font-size:13px; color:var(--dim);">Prefijo de comandos</label>
+                                <input id="cfg-prefix" class="eco-input" placeholder="." style="font-weight:600; font-size:16px;" />
 
-                    <label>Canal de bienvenida</label>
-                    <select id="cfg-welcome" class="eco-input">
-                        <option value="">— Ninguno —</option>
-                        <% (channels || []).forEach(c => { %>
-                            <option value="<%= c.id %>"><%= c.name %> — <%= c.id %></option>
-                        <% }) %>
-                    </select>
+                                <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de bienvenida</label>
+                                <select id="cfg-welcome" class="eco-input">
+                                    <option value="">— Ninguno —</option>
+                                    <% (channels || []).forEach(c => { %>
+                                        <option value="<%= c.id %>"><%= c.name %></option>
+                                    <% }) %>
+                                </select>
 
-                    <label>Canal de salida</label>
-                    <select id="cfg-leave" class="eco-input">
-                        <option value="">— Ninguno —</option>
-                        <% (channels || []).forEach(c => { %>
-                            <option value="<%= c.id %>"><%= c.name %> — <%= c.id %></option>
-                        <% }) %>
-                    </select>
+                                <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de salida</label>
+                                <select id="cfg-leave" class="eco-input">
+                                    <option value="">— Ninguno —</option>
+                                    <% (channels || []).forEach(c => { %>
+                                        <option value="<%= c.id %>"><%= c.name %></option>
+                                    <% }) %>
+                                </select>
+                            </div>
 
-                    <label>Rol de moderadores</label>
-                    <select id="cfg-mods" class="eco-input">
-                        <option value="">— Ninguno —</option>
-                        <% (roles || []).forEach(r => { %>
-                            <option value="<%= r.id %>"><%= r.name %> — <%= r.id %></option>
-                        <% }) %>
-                    </select>
+                            <div style="flex:1; min-width:240px;">
+                                <label style="font-size:13px; color:var(--dim);">Rol de moderadores</label>
+                                <select id="cfg-mods" class="eco-input">
+                                    <option value="">— Ninguno —</option>
+                                    <% (roles || []).forEach(r => { %>
+                                        <option value="<%= r.id %>"><%= r.name %></option>
+                                    <% }) %>
+                                </select>
 
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <button id="saveCfg" class="btn btn-primary">Guardar</button>
-                        <button id="cancelCfg" class="btn btn-secondary">Cancelar</button>
-                        <span id="saveMsg" style="margin-left:10px;color:var(--dim);"></span>
-                    </div>
-                </div>
+                                <div style="margin-top:18px; font-size:13px; color:var(--dim);">Sugerencia: usa roles y canales para mensajes automáticos.</div>
+
+                                <div style="display:flex; gap:10px; margin-top:18px;">
+                                    <button id="saveCfg" style="background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; font-weight:600;">Guardar</button>
+                                    <button id="cancelCfg" style="background:transparent; color:var(--dim); border:1px solid #2f3136; padding:10px 14px; border-radius:6px; cursor:pointer;">Cancelar</button>
+                                    <div id="saveMsg" style="margin-left:10px;color:var(--dim); align-self:center;"></div>
+                                </div>
+                            </div>
+                        </div>
             </div>
         </main>
     </div>
@@ -171,13 +177,13 @@
             try {
                 const r = await fetch(`/api/guilds/${guildId}/config`);
                 const j = await r.json();
-                if (j.ok) {
-                    const cfg = j.config || {};
-                    document.getElementById('cfg-prefix').value = cfg.prefix || '.';
-                    if (cfg.welcomeChannel) document.getElementById('cfg-welcome').value = cfg.welcomeChannel;
-                    if (cfg.leaveChannel) document.getElementById('cfg-leave').value = cfg.leaveChannel;
-                    if (cfg.modsRole) document.getElementById('cfg-mods').value = cfg.modsRole;
-                } else {
+                        if (j.ok) {
+                            const cfg = j.config || {};
+                            document.getElementById('cfg-prefix').value = cfg.prefix || '.';
+                            if (cfg.welcomeChannel) document.getElementById('cfg-welcome').value = cfg.welcomeChannel;
+                            if (cfg.leaveChannel) document.getElementById('cfg-leave').value = cfg.leaveChannel;
+                            if (cfg.modsRole) document.getElementById('cfg-mods').value = cfg.modsRole;
+                        } else {
                     document.getElementById('saveMsg').innerText = 'No se pudo cargar la configuración';
                 }
             } catch (err) {
@@ -192,6 +198,9 @@
                 leaveChannel: document.getElementById('cfg-leave').value || null,
                 modsRole: document.getElementById('cfg-mods').value || null
             };
+            const saveBtn = document.getElementById('saveCfg');
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.7';
             document.getElementById('saveMsg').innerText = 'Guardando...';
             try {
                 const r = await fetch(`/api/guilds/${guildId}/config`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
@@ -204,7 +213,7 @@
             } catch (err) {
                 document.getElementById('saveMsg').innerText = 'Error de red';
             }
-            setTimeout(()=>{ document.getElementById('saveMsg').innerText=''; }, 3000);
+            setTimeout(()=>{ document.getElementById('saveMsg').innerText=''; saveBtn.disabled=false; saveBtn.style.opacity='1'; }, 2500);
         });
 
         document.getElementById('cancelCfg').addEventListener('click', () => { tabProfile.click(); });
