@@ -1,5 +1,3 @@
-//src/database/mongodb.js
-
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
@@ -38,6 +36,9 @@ const userSchema = new Schema({
 
   // 🔹 NUEVO: cooldown global robobadu (15 min)
   robobadu_cooldown: { type: Number, default: 0 },
+
+  // ⛏️ NUEVO: cooldown minería
+  mining_cooldown: { type: Number, default: 0 },
 });
 userSchema.index({ userId: 1, guildId: 1 }, { unique: true });
 const User = getModel("User", userSchema);
@@ -291,6 +292,27 @@ const BadulaqueLocalCooldown = getModel(
 );
 
 /* ========================================================================== */
+/* MINING CONFIG                                                              */
+/* ========================================================================== */
+
+const miningConfigSchema = new Schema({
+  guildId: { type: String, unique: true },
+
+  requireType: {
+    type: String,
+    enum: ["role", "item", null],
+    default: null,
+  },
+
+  requireId: {
+    type: String,
+    default: null,
+  },
+});
+
+const MiningConfig = getModel("MiningConfig", miningConfigSchema);
+
+/* ========================================================================== */
 /* EXPORTS                                                                    */
 /* ========================================================================== */
 
@@ -307,4 +329,5 @@ module.exports = {
   MariConfig,
   Badulaque,
   BadulaqueLocalCooldown,
+  MiningConfig,
 };

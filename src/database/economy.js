@@ -1,4 +1,3 @@
-// src/database/economy.js
 require("dotenv").config();
 const {
   User,
@@ -9,6 +8,7 @@ const {
   Dni,
   PoliceConfig,
   MariConfig,
+  MiningConfig,
 } = require("./mongodb.js");
 const logger = require("@logger");
 
@@ -36,6 +36,7 @@ module.exports = {
           daily_claim_at: 0,
           work_cooldown: 0,
           trash_cooldown: 0,
+          mining_cooldown: 0,
         },
       },
       { new: true, upsert: true }
@@ -211,58 +212,11 @@ module.exports = {
   },
 
   /* ===========================
-     ITEMS / SHOP
+     INVENTARIO
   =========================== */
-  async getItemByName(guildId, name) {
-    if (!name) return null;
-    return Item.findOne({
-      guildId,
-      itemName: { $regex: `^${name}$`, $options: "i" },
-    });
-  },
-
-  // 🔧 AÑADIDO: necesario para autocomplete / admin / shop
-  async getAllItems(guildId) {
-    if (!guildId) return [];
-    return Item.find({ guildId }).sort({ itemName: 1 });
-  },
-
-  async createItem(
-    guildId,
-    name,
-    price = 0,
-    desc = "",
-    emoji = "📦",
-    extra = {}
-  ) {
-    const exists = await this.getItemByName(guildId, name);
-    if (exists) return null;
-
-    const item = new Item({
-      guildId,
-      itemName: name,
-      price: Number(price || 0),
-      description: desc || "",
-      emoji: emoji || "📦",
-      ...extra,
-    });
-
-    await item.save();
-    return item;
-  },
-
-  async deleteItem(guildId, name) {
-    const item = await this.getItemByName(guildId, name);
-    if (!item) return false;
-
-    await Inventory.deleteMany({ itemId: item._id });
-    await item.deleteOne();
-    return true;
-  },
-
   async getUserInventory(userId, guildId) {
     const data = await Inventory.find({ userId, guildId }).populate("itemId");
-    return data.map((entry) => ({
+    return data.map(entry => ({
       itemName: entry.itemId?.itemName || "???",
       description: entry.itemId?.description || "",
       emoji: entry.itemId?.emoji || "📦",
@@ -273,6 +227,32 @@ module.exports = {
       sellable: entry.itemId?.sellable || false,
       inventory: entry.itemId?.inventory ?? true,
     }));
+  },
+
+  async getItemByName(guildId, name) {
+    if (!name) return null;
+    return Item.findOne({
+      guildId,
+      itemName: { $regex: `^${name}$`, $options: "i" },
+    });
+  },
+
+  async getAllItems(guildId) {
+    if (!guildId) return [];
+    return Item.find({ guildId }).sort({ itemName: 1 });
+  },
+
+  async hasItem(userId, guildId, itemName) {
+    const item = await this.getItemByName(guildId, itemName);
+    if (!item) return false;
+
+    const inv = await Inventory.findOne({
+      userId,
+      guildId,
+      itemId: item._id,
+    });
+
+    return !!inv && inv.amount > 0;
   },
 
   async addToInventory(userId, guildId, itemName, amount = 1) {
@@ -299,12 +279,9 @@ module.exports = {
     return true;
   },
 
-  // 🔧 FIX CRÍTICO: /item quitar
   async removeItem(userId, guildId, itemName, amount = 1) {
     const item = await this.getItemByName(guildId, itemName);
-    if (!item) {
-      return { success: false, reason: "ITEM_NOT_FOUND" };
-    }
+    if (!item) return { success: false, reason: "ITEM_NOT_FOUND" };
 
     const slot = await Inventory.findOne({
       userId,
@@ -312,109 +289,40 @@ module.exports = {
       itemId: item._id,
     });
 
-    if (!slot || slot.amount < amount) {
+    if (!slot || slot.amount < amount)
       return { success: false, reason: "NOT_ENOUGH_ITEMS" };
-    }
 
     slot.amount -= amount;
-
-    if (slot.amount <= 0) {
-      await slot.deleteOne();
-    } else {
-      await slot.save();
-    }
+    if (slot.amount <= 0) await slot.deleteOne();
+    else await slot.save();
 
     return { success: true };
   },
 
-  async getShop(guildId) {
-    return Item.find({ guildId }).sort({ price: 1 });
+  /* ===========================
+     MINERÍA
+  =========================== */
+  async getMiningCooldown(userId, guildId) {
+    const u = await this.getUser(userId, guildId);
+    return u ? Number(u.mining_cooldown || 0) : 0;
   },
 
-  /* ===========================
-     CONFIG: POLICÍA
-  =========================== */
-  async setPoliceRole(guildId, roleId) {
-    return PoliceConfig.findOneAndUpdate(
+  async setMiningCooldown(userId, guildId, ts) {
+    const u = await this.getUser(userId, guildId);
+    u.mining_cooldown = Number(ts);
+    await u.save();
+    return u.mining_cooldown;
+  },
+
+  async getMiningConfig(guildId) {
+    return MiningConfig.findOne({ guildId });
+  },
+
+  async setMiningConfig(guildId, data = {}) {
+    return MiningConfig.findOneAndUpdate(
       { guildId },
-      { roleId },
+      data,
       { upsert: true, new: true }
     );
-  },
-
-  async getPoliceRole(guildId) {
-    const cfg = await PoliceConfig.findOne({ guildId });
-    return cfg ? cfg.roleId : null;
-  },
-
-  /* ===========================
-     CONFIG: VENDER MARÍA
-  =========================== */
-  async setMariConfig(guildId, data = {}) {
-    return MariConfig.findOneAndUpdate(
-      { guildId },
-      { $set: data },
-      { new: true, upsert: true }
-    );
-  },
-
-  async getMariConfig(guildId) {
-    return MariConfig.findOne({ guildId });
-  },
-
-  async setMariItem(guildId, itemName) {
-    const cfg = await this.getMariConfig(guildId);
-    if (!cfg) return this.setMariConfig(guildId, { itemName });
-    cfg.itemName = itemName;
-    await cfg.save();
-    return cfg;
-  },
-
-  async setMariRole(guildId, roleId) {
-    const cfg = await this.getMariConfig(guildId);
-    if (!cfg) return this.setMariConfig(guildId, { roleId });
-    cfg.roleId = roleId;
-    await cfg.save();
-    return cfg;
-  },
-
-  async sellMari(userId, guildId) {
-    const cfg = await this.getMariConfig(guildId);
-    if (!cfg) return { success: false, message: "Config no establecida." };
-
-    const itemName = cfg.itemName;
-    const minConsume = Number(cfg.minConsume ?? 1);
-    const maxConsume = Number(cfg.maxConsume ?? 1);
-    const minPrice = Number(cfg.minPrice ?? 1);
-    const maxPrice = Number(cfg.maxPrice ?? 1);
-
-    if (!itemName)
-      return { success: false, message: "Item no configurado." };
-    if (minConsume > maxConsume || minPrice > maxPrice)
-      return { success: false, message: "Configuración inválida." };
-
-    const consumeQty =
-      Math.floor(Math.random() * (maxConsume - minConsume + 1)) + minConsume;
-    const unitPrice =
-      Math.floor(Math.random() * (maxPrice - minPrice + 1)) + minPrice;
-    const total = consumeQty * unitPrice;
-
-    const removed = await this.removeItem(
-      userId,
-      guildId,
-      itemName,
-      consumeQty
-    );
-    if (!removed.success)
-      return { success: false, message: "No tienes suficiente mercancía." };
-
-    await this.addBank(userId, guildId, total, "mari_sell");
-
-    return {
-      success: true,
-      consume: consumeQty,
-      earn: total,
-      priceUnit: unitPrice,
-    };
   },
 };
