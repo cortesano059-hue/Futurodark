@@ -18,9 +18,7 @@ module.exports = (client) => {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
-    // Seguridad, compresión y límites
     if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
-    // Usar helmet pero desactivar CSP nativo para aplicar una política controlada
     app.use(helmet({
         crossOriginResourcePolicy: { policy: 'cross-origin' },
         crossOriginEmbedderPolicy: false,
@@ -28,7 +26,6 @@ module.exports = (client) => {
     }));
     app.use(compression());
 
-    // Content Security Policy: política permisiva pero segura que permite cargar imágenes desde Discord CDN y recursos HTTPS.
     app.use((req, res, next) => {
         const csp = [
             "default-src 'self' https:",
@@ -39,18 +36,16 @@ module.exports = (client) => {
             "connect-src 'self' https://discord.com https://api.github.com wss:"
         ].join('; ');
         res.setHeader('Content-Security-Policy', csp);
-        // Asegurar que recursos estáticos pueden ser cargados cross-origin desde la CDN del bot
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         next();
     });
 
     const limiter = rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutos
-        max: 100 // 100 requests por ventana por IP
+        windowMs: 15 * 60 * 1000,
+        max: 100
     });
     app.use(limiter);
 
-    // Servir archivos estáticos (css, images, js) y permitir CORS en assets para evitar bloqueos en clientes
     app.use(express.static(path.join(__dirname, 'public'), {
         setHeaders: (res, p) => {
             res.setHeader('Access-Control-Allow-Origin', '*');
@@ -61,7 +56,7 @@ module.exports = (client) => {
     passport.deserializeUser((obj, done) => done(null, obj));
 
     passport.use(new Strategy({
-        clientID: process.env.CLIENT_ID || (client && client.user ? client.user.id : undefined),
+        clientID: process.env.CLIENT_ID,
         clientSecret: process.env.CLIENT_SECRET,
         callbackURL: process.env.CALLBACK_URL,
         scope: ['identify', 'guilds']
@@ -85,7 +80,6 @@ module.exports = (client) => {
     app.set('views', path.join(__dirname, 'views'));
     app.set('view engine', 'ejs');
 
-    // Exponer la ruta actual a las vistas para marcar el enlace activo en la barra
     app.use((req, res, next) => {
         res.locals.currentPath = req.path || '/';
         next();
@@ -96,12 +90,10 @@ module.exports = (client) => {
         res.redirect('/login');
     };
 
-    // --- RUTA: LOGIN / LOGOUT ---
     app.get('/login', passport.authenticate('discord'));
     app.get('/auth/discord/callback', passport.authenticate('discord', { failureRedirect: '/' }), (req, res) => res.redirect('/dashboard'));
     app.get('/logout', (req, res, next) => { req.logout(err => { if (err) return next(err); res.redirect('/'); })});
 
-    // --- RUTA: INICIO ---
     app.get('/', async (req, res) => {
         let economia = { money: 0, bank: 0 };
         if (req.user && process.env.GUILD_ID) {
@@ -121,161 +113,34 @@ module.exports = (client) => {
         });
     });
 
-    // --- RUTA: COMANDOS (DINÁMICA POR CARPETAS) ---
     app.get('/comandos', (req, res) => {
         const grupos = {};
-
-        // client.commands contiene los comandos cargados en el arranque del bot
         client.commands.forEach(cmd => {
-            // Usamos la carpeta (category) definida en la carga de comandos
             const categoria = cmd.category || 'Otros'; 
-            
-            if (!grupos[categoria]) {
-                grupos[categoria] = [];
-            }
-
-            grupos[categoria].push({
-                name: cmd.data.name,
-                description: cmd.data.description
-            });
+            if (!grupos[categoria]) grupos[categoria] = [];
+            grupos[categoria].push({ name: cmd.data.name, description: cmd.data.description });
         });
-
-        res.render('commands', { 
-            bot: client.user, 
-            user: req.user || null, 
-            grupos 
-        });
+        res.render('commands', { bot: client.user, user: req.user || null, grupos });
     });
 
-    // --- RUTA: TIENDA ---
-    app.get('/tienda', checkAuth, async (req, res) => {
-        // Para facilitar la demo, definimos unos items estáticos aquí.
-        const items = [
-            { id: 'item_potion', name: 'Poción pequena', description: 'Restaura 10 monedas virtuales.', price: 50, icon: '/images/potion.png' },
-            { id: 'item_sword', name: 'Espada de prueba', description: 'Un arma de prueba sin efectos reales.', price: 150, icon: '/images/sword.png' }
-        ];
-
-        // Obtener saldo del usuario desde la base de datos
-        let economia = { money: 0, bank: 0 };
-        try {
-            const data = await User.findOne({ userId: req.user.id, guildId: process.env.GUILD_ID });
-            if (data) { economia.money = data.money; economia.bank = data.bank; }
-        } catch (e) { }
-
-        res.render('tienda', { bot: client.user, user: req.user, items, economy: economia });
-    });
-
-    // Endpoint de compra: simple ejemplo para descontar y añadir al inventario
-    app.post('/api/tienda/buy', checkAuth, async (req, res) => {
-        const itemId = req.body.itemId;
-        if (!itemId) return res.status(400).json({ ok: false, error: 'missing_item' });
-
-        // Lista de items de la tienda (coincide con la vista)
-        const shopItems = {
-            'item_potion': { id: 'item_potion', name: 'Poción pequena', price: 50 },
-            'item_sword': { id: 'item_sword', name: 'Espada de prueba', price: 150 }
-        };
-
-        const item = shopItems[itemId];
-        if (!item) return res.status(404).json({ ok: false, error: 'not_found' });
-
-        try {
-            const dbUser = await User.findOne({ userId: req.user.id, guildId: process.env.GUILD_ID });
-            if (!dbUser || dbUser.money < item.price) return res.status(400).json({ ok: false, error: 'insufficient_funds' });
-
-            // descontar precio
-            dbUser.money = dbUser.money - item.price;
-            // actualizar inventario (campo `inventory` asumido como array de { id, name, count })
-            dbUser.inventory = dbUser.inventory || [];
-            const existing = dbUser.inventory.find(i => i.id === item.id);
-            if (existing) existing.count = (existing.count || 0) + 1;
-            else dbUser.inventory.push({ id: item.id, name: item.name, count: 1, icon: item.icon || null });
-
-            await dbUser.save();
-            res.json({ ok: true, newBalance: dbUser.money, inventory: dbUser.inventory });
-        } catch (err) {
-            logger.error && logger.error('Buy error', err);
-            res.status(500).json({ ok: false, error: 'db_error' });
-        }
-    });
-
-    // --- RUTA: INVENTARIO ---
-    app.get('/inventario', checkAuth, async (req, res) => {
-        try {
-            const dbUser = await User.findOne({ userId: req.user.id, guildId: process.env.GUILD_ID }) || {};
-            const inventory = dbUser.inventory || [];
-            const economia = { money: dbUser.money || 0, bank: dbUser.bank || 0 };
-            res.render('inventario', { bot: client.user, user: req.user, inventory, economy: economia });
-        } catch (err) {
-            res.redirect('/dashboard');
-        }
-    });
-
-    // --- RUTA: SELECCIÓN LEADERBOARD ---
-    app.get('/leaderboard', checkAuth, (req, res) => {
-        const guilds = [];
-        req.user.guilds.forEach(g => {
-            const botIn = client.guilds.cache.get(g.id);
-            if (botIn) {
-                guilds.push({
-                    id: g.id,
-                    name: g.name,
-                    icon: botIn.iconURL ? botIn.iconURL({ format: 'png', size: 128 }) : (g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null),
-                    acronym: g.name.replace(/\w+/g, n => n[0]).substring(0, 2)
-                });
-            }
-        });
-        res.render('leaderboard', { bot: client.user, user: req.user, guilds });
-    });
-
-    // --- RUTA: LEADERBOARD ESPECÍFICO DE SERVIDOR ---
-    app.get('/leaderboard/:guildId', checkAuth, async (req, res) => {
-        const guild = client.guilds.cache.get(req.params.guildId);
-        if (!guild) return res.redirect('/leaderboard');
-
-        try {
-            // Obtenemos el top 10 de usuarios más ricos
-            const dbUsers = await User.find({ guildId: guild.id }).sort({ money: -1, bank: -1 }).limit(10);
-            
-            const topUsers = dbUsers.map(u => {
-                const member = guild.members.cache.get(u.userId);
-                return {
-                    displayName: member ? member.displayName : "Usuario Desconocido",
-                    avatarUrl: member ? member.user.displayAvatarURL({ format: 'png' }) : "https://cdn.discordapp.com/embed/avatars/0.png",
-                    money: u.money,
-                    bank: u.bank,
-                    totalMoney: u.money + u.bank
-                };
-            });
-
-            res.render('server_leaderboard', { bot: client.user, user: req.user, guild, topUsers });
-        } catch (err) {
-            res.redirect('/leaderboard');
-        }
-    });
-
-    // --- RUTA: DASHBOARD GENERAL (ICONOS GRANDES) ---
     app.get('/dashboard', checkAuth, (req, res) => {
         const mutualGuilds = [], inviteGuilds = [];
         req.user.guilds.forEach(guild => {
             const botIn = client.guilds.cache.get(guild.id);
             const isAdmin = (guild.permissions & 0x8) === 0x8;
             const isOwner = OWNER_ID && String(req.user.id) === String(OWNER_ID);
-            
             const data = { 
                 id: guild.id, 
                 name: guild.name, 
                 icon: botIn && botIn.iconURL ? botIn.iconURL({ format: 'png', size: 128 }) : (guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : null), 
                 acronym: guild.name.replace(/\w+/g, n => n[0]).substring(0, 2) 
             };
-
             if (botIn) mutualGuilds.push(data); 
             else if (isAdmin || isOwner) inviteGuilds.push(data);
         });
         res.render('dashboard', { bot: client.user, user: req.user, mutualGuilds, inviteGuilds });
     });
 
-    // --- RUTA: PANEL INTERNO DE SERVIDOR ---
     app.get('/dashboard/:guildId', checkAuth, async (req, res) => {
         const guild = client.guilds.cache.get(req.params.guildId);
         if (!guild) return res.redirect('/dashboard');
@@ -292,7 +157,6 @@ module.exports = (client) => {
         });
 
         try {
-            // Aseguramos tener los miembros en caché para el buscador
             if (guild.members.cache.size < (guild.memberCount * 0.5)) await guild.members.fetch().catch(() => {});
             
             const dbUsers = await User.find({ guildId: guild.id });
@@ -307,20 +171,17 @@ module.exports = (client) => {
                 };
             });
 
-            let economia = { money: 0, bank: 0 };
-            const myData = dbUsers.find(u => u.userId === req.user.id);
-            if (myData) { economia.money = myData.money; economia.bank = myData.bank; }
+            const myData = dbUsers.find(u => u.userId === req.user.id) || { money: 0, bank: 0, inventory: [] };
+            const economia = { money: myData.money, bank: myData.bank };
+            const inventory = myData.inventory || []; // IMPORTANTE: Pasamos el inventario a la vista
 
-            // preparar lista de canales y roles para el formulario de configuración
-            const channels = guild.channels && guild.channels.cache ? guild.channels.cache
-                .filter(c => c.type === 'GUILD_TEXT' || c.type === 0 || c.type === 'text')
-                .sort((a, b) => (a.position || 0) - (b.position || 0))
-                .map(c => ({ id: c.id, name: c.name || (c.topic ? c.topic : c.id) })) : [];
+            const channels = guild.channels.cache
+                .filter(c => c.type === 'GUILD_TEXT' || c.type === 0)
+                .map(c => ({ id: c.id, name: c.name }));
 
-            const roles = guild.roles && guild.roles.cache ? guild.roles.cache
+            const roles = guild.roles.cache
                 .filter(r => r.id !== guild.id && !r.managed && r.name !== '@everyone')
-                .sort((a, b) => (b.position || 0) - (a.position || 0))
-                .map(r => ({ id: r.id, name: r.name, color: r.hexColor || '#999' })) : [];
+                .map(r => ({ id: r.id, name: r.name }));
 
             res.render('server_dashboard', { 
                 bot: client.user, 
@@ -329,12 +190,12 @@ module.exports = (client) => {
                 mutualGuilds, 
                 allUsers, 
                 economy: economia,
+                inventory: inventory, // Pasamos la variable definida
                 channels,
                 roles,
-                // items específicos del servidor (puedes mover esto a DB luego)
                 items: [
-                    { id: 'guild_potion', name: 'Poción del servidor', description: 'Poción útil sólo en este servidor.', price: 75, icon: '/images/potion.png' },
-                    { id: 'guild_banner', name: 'Estandarte del Servidor', description: 'Un banner decorativo para tu perfil.', price: 250, icon: '/images/banner.png' }
+                    { id: 'guild_potion', name: 'Poción del servidor', description: 'Poción útil en este servidor.', price: 75, icon: '/images/potion.png' },
+                    { id: 'guild_banner', name: 'Estandarte', description: 'Decoración de perfil.', price: 250, icon: '/images/banner.png' }
                 ]
             });
         } catch (err) {
@@ -342,22 +203,13 @@ module.exports = (client) => {
         }
     });
 
-    // Compra de tienda específica de servidor
     app.post('/api/guilds/:guildId/tienda/buy', checkAuth, async (req, res) => {
-        const guildId = req.params.guildId;
-        const itemId = req.body.itemId;
-        if (!itemId) return res.status(400).json({ ok: false, error: 'missing_item' });
-
-        // Comprobar que el usuario pertenece al servidor
-        const isMember = req.user.guilds.some(g => g.id === guildId);
-        if (!isMember) return res.status(403).json({ ok: false, error: 'not_member' });
-
-        // Items por servidor (mismo listado que el render). En producción leer desde DB.
+        const { guildId } = req.params;
+        const { itemId } = req.body;
         const shopItems = {
             'guild_potion': { id: 'guild_potion', name: 'Poción del servidor', price: 75 },
-            'guild_banner': { id: 'guild_banner', name: 'Estandarte del Servidor', price: 250 }
+            'guild_banner': { id: 'guild_banner', name: 'Estandarte', price: 250 }
         };
-
         const item = shopItems[itemId];
         if (!item) return res.status(404).json({ ok: false, error: 'not_found' });
 
@@ -365,100 +217,38 @@ module.exports = (client) => {
             const dbUser = await User.findOne({ userId: req.user.id, guildId });
             if (!dbUser || dbUser.money < item.price) return res.status(400).json({ ok: false, error: 'insufficient_funds' });
 
-            dbUser.money = dbUser.money - item.price;
+            dbUser.money -= item.price;
             dbUser.inventory = dbUser.inventory || [];
             const existing = dbUser.inventory.find(i => i.id === item.id);
-            if (existing) existing.count = (existing.count || 0) + 1;
+            if (existing) existing.count += 1;
             else dbUser.inventory.push({ id: item.id, name: item.name, count: 1, icon: null });
 
             await dbUser.save();
-            res.json({ ok: true, newBalance: dbUser.money, inventory: dbUser.inventory });
+            res.json({ ok: true, newBalance: dbUser.money });
         } catch (err) {
-            logger.error && logger.error('Guild shop buy error', err);
             res.status(500).json({ ok: false, error: 'db_error' });
         }
     });
 
-    // API: obtener configuración del servidor
     app.get('/api/guilds/:guildId/config', checkAuth, async (req, res) => {
-        const guildId = req.params.guildId;
-        // comprobar que el usuario pertenece al servidor
-        const isMember = req.user.guilds.some(g => g.id === guildId);
-        if (!isMember) return res.status(403).json({ error: 'not_member' });
-
         try {
-            const cfg = await GuildConfig.findOne({ guildId }) || {};
+            const cfg = await GuildConfig.findOne({ guildId: req.params.guildId }) || {};
             res.json({ ok: true, config: cfg });
-        } catch (err) {
-            res.status(500).json({ ok: false, error: 'db_error' });
-        }
+        } catch (err) { res.status(500).json({ ok: false }); }
     });
 
-    // API: actualizar configuración del servidor (sólo admins/owner)
     app.post('/api/guilds/:guildId/config', checkAuth, async (req, res) => {
-        const guildId = req.params.guildId;
-        if (!req.user) return res.status(401).json({ error: 'not_auth' });
-
-        const targetGuild = req.user.guilds.find(g => g.id === guildId);
-        if (!targetGuild) return res.status(403).json({ error: 'not_member' });
-
-        const isOwner = String(req.user.id) === String(OWNER_ID);
-        const isAdmin = (targetGuild.permissions & 0x8) === 0x8;
-        if (!isAdmin && !isOwner) return res.status(403).json({ error: 'not_allowed' });
-
-        // Server-side validation & sanitization
-        const prefix = (req.body.prefix || '.').toString().trim().slice(0, 3);
-        const welcomeChannel = req.body.welcomeChannel ? String(req.body.welcomeChannel).trim() : null;
-        const leaveChannel = req.body.leaveChannel ? String(req.body.leaveChannel).trim() : null;
-        const modsRole = req.body.modsRole ? String(req.body.modsRole).trim() : null;
-
-        const isValidId = (val) => !!val && /^[0-9]{17,22}$/.test(val);
-        if (welcomeChannel && !isValidId(welcomeChannel)) return res.status(400).json({ ok: false, error: 'invalid_welcome_channel' });
-        if (leaveChannel && !isValidId(leaveChannel)) return res.status(400).json({ ok: false, error: 'invalid_leave_channel' });
-        if (modsRole && !isValidId(modsRole)) return res.status(400).json({ ok: false, error: 'invalid_mods_role' });
-        if (!prefix || prefix.length < 1 || prefix.length > 3) return res.status(400).json({ ok: false, error: 'invalid_prefix' });
-
-        const payload = {
-            prefix,
-            welcomeChannel: welcomeChannel || null,
-            leaveChannel: leaveChannel || null,
-            modsRole: modsRole || null
-        };
-
         try {
             const updated = await GuildConfig.findOneAndUpdate(
-                { guildId },
-                { $set: payload },
+                { guildId: req.params.guildId },
+                { $set: req.body },
                 { upsert: true, new: true }
             );
             res.json({ ok: true, config: updated });
-        } catch (err) {
-            logger.error && logger.error('Failed saving guild config', err);
-            res.status(500).json({ ok: false, error: 'db_error' });
-        }
+        } catch (err) { res.status(500).json({ ok: false }); }
     });
-    // Manejador 404 simple que renderiza la vista 404.ejs
+
     app.use((req, res) => res.status(404).render('404', { bot: client.user, user: req.user || null }));
 
-    app.get('/health', (req, res) => {
-        const info = {
-            status: 'ok',
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            bot: client && client.user ? { username: client.user.username, id: client.user.id } : null,
-            ts: Date.now()
-        };
-        try { logger.info('Health check OK'); } catch(e) { console.log('Health check'); }
-        res.json(info);
-    });
-
-    app.listen(puerto, () => {
-        try { logger.info(`🌐 Dashboard listo: http://localhost:${puerto}`); } catch(e) { console.log(`🌐 Dashboard listo: http://localhost:${puerto}`); }
-    });
-
-    // En desarrollo, añadir un pequeño keep-alive para evitar que algunos entornos
-    // terminen el proceso inesperadamente (no necesario en producción con PM2).
-    if (process.env.NODE_ENV !== 'production') {
-        setInterval(() => { /* keep-alive */ }, 60 * 1000);
-    }
+    app.listen(puerto, () => logger.info(`🌐 Dashboard listo: http://localhost:${puerto}`));
 };
