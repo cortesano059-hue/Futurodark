@@ -24,7 +24,7 @@ function getModel(name, schema) {
 }
 
 /* ========================================================================== */
-/* USERS                                                                       */
+/* USERS                                                                      */
 /* ========================================================================== */
 
 const userSchema = new Schema({
@@ -43,12 +43,22 @@ const userSchema = new Schema({
 
   // ⛏️ NUEVO: cooldown minería
   mining_cooldown: { type: Number, default: 0 },
+
+  // 🔹 NUEVO: Cache de inventario para el dashboard (Carga rápida)
+  inventory_cache: [
+    {
+      id: String,
+      name: String,
+      count: { type: Number, default: 1 },
+      emoji: String
+    }
+  ]
 });
 userSchema.index({ userId: 1, guildId: 1 }, { unique: true });
 const User = getModel("User", userSchema);
 
 /* ========================================================================== */
-/* ITEMS                                                                       */
+/* ITEMS                                                                      */
 /* ========================================================================== */
 
 const itemSchema = new Schema({
@@ -105,7 +115,7 @@ itemSchema.index({ guildId: 1, itemName: 1 }, { unique: true });
 const Item = getModel("Item", itemSchema);
 
 /* ========================================================================== */
-/* INVENTORY                                                                   */
+/* INVENTORY                                                                  */
 /* ========================================================================== */
 
 const inventorySchema = new Schema({
@@ -121,7 +131,7 @@ inventorySchema.index(
 const Inventory = getModel("Inventory", inventorySchema);
 
 /* ========================================================================== */
-/* BACKPACK (LEGACY EXTENDIDO – NIVEL 2)                                       */
+/* BACKPACK (LEGACY EXTENDIDO – NIVEL 2)                                      */
 /* ========================================================================== */
 
 const backpackSchema = new Schema(

@@ -10,19 +10,19 @@ const {
   PoliceConfig,
   MariConfig,
   MiningConfig,
-} = require("./mongodb.js");
+} = require("../database/mongodb.js"); // Asegúrate de que la ruta sea correcta
 
-const logger = require("@logger");
+const logger = require("../utils/logger");
 
 /**
- * Sistema de economía / items / configs
+ * Sistema de economía / items / configs mejorado para Dashboard
  */
 
 module.exports = {
   DAILY_COOLDOWN: 86400000, // 24h
 
   /* ===========================
-     USUARIOS
+      USUARIOS
   =========================== */
   async getUser(userId, guildId) {
     if (!userId || !guildId) return null;
@@ -39,6 +39,7 @@ module.exports = {
           work_cooldown: 0,
           trash_cooldown: 0,
           mining_cooldown: 0,
+          inventory_cache: [] // Inicializamos la cache para el dashboard
         },
       },
       { new: true, upsert: true }
@@ -56,6 +57,7 @@ module.exports = {
         dailyClaim: 0,
         workCooldown: 0,
         trashCooldown: 0,
+        inventory: []
       };
 
     return {
@@ -64,11 +66,12 @@ module.exports = {
       dailyClaim: u.daily_claim_at || 0,
       workCooldown: u.work_cooldown || 0,
       trashCooldown: u.trash_cooldown || 0,
+      inventory: u.inventory_cache || []
     };
   },
 
   /* ===========================
-     DINERO
+      DINERO
   =========================== */
   async addMoney(userId, guildId, amount, type = "system") {
     const u = await this.getUser(userId, guildId);
@@ -143,15 +146,6 @@ module.exports = {
     u.bank = (u.bank || 0) + n;
     await u.save();
 
-    logger.logTransaction?.({
-      userId,
-      guildId,
-      type: "deposit",
-      amount: n,
-      from: "money",
-      to: "bank",
-    });
-
     return { success: true };
   },
 
@@ -167,20 +161,11 @@ module.exports = {
     u.money = (u.money || 0) + n;
     await u.save();
 
-    logger.logTransaction?.({
-      userId,
-      guildId,
-      type: "withdraw",
-      amount: n,
-      from: "bank",
-      to: "money",
-    });
-
     return { success: true };
   },
 
   /* ===========================
-     ITEMS
+      ITEMS
   =========================== */
 
   async getItemByName(guildId, name) {
@@ -196,10 +181,6 @@ module.exports = {
     return Item.find({ guildId }).sort({ itemName: 1 });
   },
 
-  /**
-   * ✅ IMPLEMENTACIÓN REAL DE createItem
-   * Usada por /item crear
-   */
   async createItem(guildId, data = {}) {
     if (!guildId || !data?.itemName) {
       throw new Error("INVALID_ITEM_DATA");
@@ -220,72 +201,69 @@ module.exports = {
       description: data.description || "",
       emoji: data.emoji || "📦",
       price: Number(data.price || 0),
-      type: data.type || "misc",
+      type: data.type || "normal",
       usable: Boolean(data.usable),
       sellable: Boolean(data.sellable),
       inventory: data.inventory !== false,
-
-      // 🔥 CLAVE PARA TU ENGINE
+      stock: data.stock ?? -1,
+      requirements: Array.isArray(data.requirements) ? data.requirements : [],
       actions: Array.isArray(data.actions) ? data.actions : [],
-      requires: Array.isArray(data.requires) ? data.requires : [],
     });
 
     return item;
   },
 
   /* ===========================
-     INVENTARIO
+      INVENTARIO
   =========================== */
 
   async getUserInventory(userId, guildId) {
+    // Obtenemos los datos de la colección Inventory y poblamos el item
     const data = await Inventory.find({ userId, guildId }).populate("itemId");
-    return data.map(entry => ({
-      itemName: entry.itemId?.itemName || "???",
+    
+    const inventory = data.map(entry => ({
+      itemId: entry.itemId?._id,
+      itemName: entry.itemId?.itemName || "Objeto Desconocido",
       description: entry.itemId?.description || "",
       emoji: entry.itemId?.emoji || "📦",
       amount: entry.amount || 0,
       price: entry.itemId?.price || 0,
-      type: entry.itemId?.type || "misc",
+      type: entry.itemId?.type || "normal",
       usable: entry.itemId?.usable || false,
       sellable: entry.itemId?.sellable || false,
       inventory: entry.itemId?.inventory ?? true,
     }));
-  },
 
-  async hasItem(userId, guildId, itemName) {
-    const item = await this.getItemByName(guildId, itemName);
-    if (!item) return false;
+    // Sincronizamos con la cache del usuario para el Dashboard
+    await User.updateOne(
+      { userId, guildId },
+      { $set: { inventory_cache: inventory.map(i => ({
+          id: i.itemId,
+          name: i.itemName,
+          count: i.amount,
+          emoji: i.emoji
+        }))
+      }}
+    );
 
-    const inv = await Inventory.findOne({
-      userId,
-      guildId,
-      itemId: item._id,
-    });
-
-    return !!inv && inv.amount > 0;
+    return inventory;
   },
 
   async addToInventory(userId, guildId, itemName, amount = 1) {
     const item = await this.getItemByName(guildId, itemName);
     if (!item) return false;
 
-    let slot = await Inventory.findOne({
-      userId,
-      guildId,
-      itemId: item._id,
-    });
+    let slot = await Inventory.findOne({ userId, guildId, itemId: item._id });
 
     if (!slot) {
-      await Inventory.create({
-        userId,
-        guildId,
-        itemId: item._id,
-        amount,
-      });
+      await Inventory.create({ userId, guildId, itemId: item._id, amount });
     } else {
       slot.amount += amount;
       await slot.save();
     }
+
+    // Actualizamos la cache después de añadir
+    await this.getUserInventory(userId, guildId);
     return true;
   },
 
@@ -293,11 +271,7 @@ module.exports = {
     const item = await this.getItemByName(guildId, itemName);
     if (!item) return { success: false, reason: "ITEM_NOT_FOUND" };
 
-    const slot = await Inventory.findOne({
-      userId,
-      guildId,
-      itemId: item._id,
-    });
+    const slot = await Inventory.findOne({ userId, guildId, itemId: item._id });
 
     if (!slot || slot.amount < amount)
       return { success: false, reason: "NOT_ENOUGH_ITEMS" };
@@ -306,11 +280,13 @@ module.exports = {
     if (slot.amount <= 0) await slot.deleteOne();
     else await slot.save();
 
+    // Actualizamos la cache después de remover
+    await this.getUserInventory(userId, guildId);
     return { success: true };
   },
 
   /* ===========================
-     MINERÍA
+      MINERÍA
   =========================== */
 
   async getMiningCooldown(userId, guildId) {
@@ -320,6 +296,7 @@ module.exports = {
 
   async setMiningCooldown(userId, guildId, ts) {
     const u = await this.getUser(userId, guildId);
+    if(!u) return 0;
     u.mining_cooldown = Number(ts);
     await u.save();
     return u.mining_cooldown;
@@ -327,13 +304,5 @@ module.exports = {
 
   async getMiningConfig(guildId) {
     return MiningConfig.findOne({ guildId });
-  },
-
-  async setMiningConfig(guildId, data = {}) {
-    return MiningConfig.findOneAndUpdate(
-      { guildId },
-      data,
-      { upsert: true, new: true }
-    );
-  },
+  }
 };

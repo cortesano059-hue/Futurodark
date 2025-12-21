@@ -1,214 +1,221 @@
 <%- include('partials/header') %>
 
-    <div class="app-container">
-        <aside class="servers-sidebar">
-            <a href="/dashboard" class="srv-icon"><i class="fas fa-home"></i></a>
-            <% mutualGuilds.forEach(g => { %>
-                <a href="/dashboard/<%= g.id %>" class="srv-icon <%= g.id === guild.id ? 'active' : '' %>" id="icon-<%= g.id %>">
-                    <% if(g.icon) { %><script>document.getElementById('icon-<%= g.id %>').style.backgroundImage = "url('<%= g.icon %>')";</script><% } else { %><%= g.acronym %><% } %>
-                </a>
-            <% }) %>
-        </aside>
+<div class="app-container">
+    <aside class="servers-sidebar">
+        <a href="/dashboard" class="srv-icon"><i class="fas fa-home"></i></a>
+        <% mutualGuilds.forEach(g => { %>
+            <a href="/dashboard/<%= g.id %>" class="srv-icon <%= g.id === guild.id ? 'active' : '' %>" style="background-image: url('<%= g.icon %>'); background-size: cover;">
+                <% if(!g.icon) { %><%= g.acronym %><% } %>
+            </a>
+        <% }) %>
+    </aside>
 
-        <aside class="options-sidebar">
-            <div style="padding:20px; font-weight:bold; border-bottom:1px solid #2f3136;"><%= guild.name %></div>
-            <a href="#" class="menu-item active" data-tab="profile"><i class="fas fa-chart-pie"></i> Mi Perfil</a>
-            <a href="#" class="menu-item" data-tab="shop"><i class="fas fa-store"></i> Tienda</a>
-            <a href="#" class="menu-item" data-tab="inventory"><i class="fas fa-briefcase"></i> Inventario</a>
-            <a href="#" class="menu-item" data-tab="settings"><i class="fas fa-cog"></i> Configuración</a>
-            
-            <div style="margin-top: auto; padding-bottom: 20px;">
-                <a href="/logout" class="menu-item" style="color:#ed4245;"><i class="fas fa-power-off"></i> Salir</a>
-            </div>
-        </aside>
+    <aside class="options-sidebar">
+        <div style="padding:20px; font-weight:bold; border-bottom:1px solid #2f3136;"><%= guild.name %></div>
+        <a href="#" class="menu-item active" data-tab="profile"><i class="fas fa-chart-pie"></i> Mi Perfil</a>
+        <a href="#" class="menu-item" data-tab="shop"><i class="fas fa-store"></i> Tienda</a>
+        <a href="#" class="menu-item" data-tab="inventory"><i class="fas fa-briefcase"></i> Inventario</a>
+        <% if(isAdmin) { %>
+            <a href="#" class="menu-item" data-tab="settings"><i class="fas fa-cog"></i> Ajustes del Bot</a>
+        <% } %>
+        
+        <div style="margin-top: auto; padding-bottom: 20px;">
+            <a href="/logout" class="menu-item" style="color:#ed4245;"><i class="fas fa-power-off"></i> Cerrar Sesión</a>
+        </div>
+    </aside>
 
-        <main class="content-area">
-            
-            <div id="section-profile" class="dashboard-section">
-                <div class="card">
-                    <h2 style="margin:0 0 20px 0;">Resumen de <%= user.username %></h2>
-                    <div style="display:flex; gap:20px;">
-                        <div style="flex:1; background:#2f3136; padding:20px; border-radius:8px; border-bottom: 3px solid #43b581;">
-                            <div style="color:#43b581; font-size:11px; font-weight:bold;">CARTERA</div>
-                            <div style="font-size:24px; font-weight:bold;">$<%= economy.money.toLocaleString() %></div>
-                        </div>
-                        <div style="flex:1; background:#2f3136; padding:20px; border-radius:8px; border-bottom: 3px solid #f1c40f;">
-                            <div style="color:#f1c40f; font-size:11px; font-weight:bold;">BANCO</div>
-                            <div style="font-size:24px; font-weight:bold;">$<%= economy.bank.toLocaleString() %></div>
-                        </div>
+    <main class="content-area">
+        
+        <div id="section-profile" class="dashboard-section">
+            <div class="card">
+                <h2>Resumen de Cuenta</h2>
+                <div class="economy-box" style="margin: 20px 0;">
+                    <div class="eco-item">
+                        <span class="eco-label">Cartera</span>
+                        <span class="eco-val wallet">$<%= economy.money.toLocaleString() %></span>
                     </div>
-                </div>
-
-                <div class="card">
-                    <h3 style="margin:0 0 15px 0; font-size:16px;">Lista de Usuarios</h3>
-                    <input type="text" id="userSearch" placeholder="Buscar por nombre o ID..." class="eco-input">
-                    <table class="eco-table">
-                        <thead>
-                            <tr><th>Usuario</th><th>Cartera</th><th>Banco</th></tr>
-                        </thead>
-                        <tbody id="userTable">
-                            <% allUsers.forEach(u => { %>
-                                <tr class="user-row" data-search="<%= u.displayName.toLowerCase() %> <%= u.userId %>">
-                                    <td>
-                                        <div style="display:flex; align-items:center; gap:10px;">
-                                            <img src="<%= u.avatarUrl %>" style="width:32px; border-radius:50%;">
-                                            <div>
-                                                <div style="font-size:13px; font-weight:600;"><%= u.displayName %></div>
-                                                <div style="font-size:10px; color:var(--dim);"><%= u.userId %></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="val-pill" style="color:#2ecc71;">$<%= u.money.toLocaleString() %></span></td>
-                                    <td><span class="val-pill" style="color:#f1c40f;">$<%= u.bank.toLocaleString() %></span></td>
-                                </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="section-shop" class="dashboard-section" style="display:none;">
-                <div class="card">
-                    <h3 style="margin:0 0 15px 0; font-size:16px;">Tienda del Servidor</h3>
-                    <div class="shop-grid">
-                        <% if(items && items.length){ %>
-                            <% items.forEach(item => { %>
-                                <div class="shop-card">
-                                    <div class="shop-icon"><img src="<%= item.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt=""></div>
-                                    <div class="shop-body">
-                                        <div class="shop-title"><%= item.name %></div>
-                                        <div class="shop-desc"><%= item.description %></div>
-                                    </div>
-                                    <div class="shop-footer">
-                                        <div class="price"><%= item.price %> <span class="coin">🪙</span></div>
-                                        <button class="btn btn-primary buy-guild-btn" data-item="<%= item.id %>">Comprar</button>
-                                    </div>
-                                </div>
-                            <% }) %>
-                        <% } else { %>
-                            <p>No hay artículos disponibles.</p>
-                        <% } %>
+                    <div class="divider-vertical"></div>
+                    <div class="eco-item">
+                        <span class="eco-label">Banco</span>
+                        <span class="eco-val bank">$<%= economy.bank.toLocaleString() %></span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div id="section-inventory" class="dashboard-section" style="display:none;">
-                <div class="card">
-                    <h3 style="margin:0 0 15px 0; font-size:16px;">Tu Inventario</h3>
-                    <% if(typeof inventory !== 'undefined' && inventory && inventory.length){ %>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">
-                            <% inventory.forEach(it => { %>
-                                <div class="inv-card" style="background:#2f3136; padding:15px; border-radius:8px; text-align:center;">
-                                    <img src="<%= it.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" style="width:48px;">
-                                    <div style="font-size:12px; margin-top:5px;"><%= it.name %></div>
-                                    <div style="font-size:10px; color:var(--dim);">x<%= it.count %></div>
-                                </div>
-                            <% }) %>
+        <div id="section-shop" class="dashboard-section" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                    <h3 style="margin:0;">Tienda de <%= guild.name %></h3>
+                    <% if(isAdmin) { %>
+                        <button class="btn btn-primary" onclick="toggleShopForm('create')">+ Crear Nuevo Ítem</button>
+                    <% } %>
+                </div>
+
+                <div id="shop-admin-form" style="display:none; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px solid var(--accent); margin-bottom: 25px;">
+                    <h4 id="form-title" style="margin-top:0;">Configurar Ítem</h4>
+                    <input type="hidden" id="f-id">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div>
+                            <label class="eco-label">Nombre del Ítem</label>
+                            <input type="text" id="f-name" class="eco-input" placeholder="Ej: Espada Legendaria">
                         </div>
+                        <div>
+                            <label class="eco-label">Precio</label>
+                            <input type="number" id="f-price" class="eco-input" placeholder="1000">
+                        </div>
+                        <div>
+                            <label class="eco-label">Emoji</label>
+                            <input type="text" id="f-emoji" class="eco-input" placeholder="⚔️">
+                        </div>
+                        <div>
+                            <label class="eco-label">Descripción</label>
+                            <input type="text" id="f-desc" class="eco-input" placeholder="Breve descripción...">
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; display:flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="submitItem()">Guardar Cambios</button>
+                        <button class="btn btn-secondary" onclick="toggleShopForm()">Cancelar</button>
+                    </div>
+                </div>
+
+                <div class="shop-grid">
+                    <% items.forEach(item => { %>
+                        <div class="shop-card">
+                            <div style="font-size: 32px;"><%= item.emoji || '📦' %></div>
+                            <div class="shop-body">
+                                <div class="shop-title"><%= item.itemName %></div>
+                                <div class="shop-desc"><%= item.description %></div>
+                            </div>
+                            <div class="shop-footer">
+                                <div class="price">$<%= item.price.toLocaleString() %></div>
+                                <div style="display:flex; gap:5px;">
+                                    <button class="btn btn-primary" style="padding: 8px 15px;" onclick="buyItem('<%= item._id %>')">Comprar</button>
+                                    <% if(isAdmin) { %>
+                                        <button class="btn btn-secondary" style="padding: 8px 10px;" onclick="editItem('<%= JSON.stringify(item) %>')"><i class="fas fa-edit"></i></button>
+                                        <button class="btn btn-secondary" style="padding: 8px 10px; color: #ff4757;" onclick="deleteItem('<%= item._id %>')"><i class="fas fa-trash"></i></button>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-inventory" class="dashboard-section" style="display:none;">
+            <div class="card">
+                <h3>Tu Inventario Personal</h3>
+                <div class="inventory-grid">
+                    <% if(inventory.length > 0) { %>
+                        <% inventory.forEach(it => { %>
+                            <div class="inv-card">
+                                <div style="font-size: 28px;"><%= it.emoji %></div>
+                                <div class="inv-name"><%= it.name %></div>
+                                <div class="inv-count">Cantidad: <%= it.amount %></div>
+                            </div>
+                        <% }) %>
                     <% } else { %>
-                        <p>No tienes objetos en tu inventario.</p>
+                        <p style="color: var(--text-dim); text-align: center; width: 100%;">No tienes objetos en tu mochila todavía.</p>
                     <% } %>
                 </div>
             </div>
+        </div>
 
-            <div id="section-settings" class="dashboard-section" style="display:none;">
-                <div class="card">
-                    <h3 style="margin:0 0 15px 0; font-size:18px;">Configuración</h3>
-                    <div style="display:flex; gap:24px; flex-wrap:wrap;">
-                        <div style="flex:1; min-width:280px;">
-                            <label>Prefijo</label>
-                            <input id="cfg-prefix" class="eco-input" placeholder=".">
-                            <label>Bienvenida</label>
-                            <select id="cfg-welcome" class="eco-input">
-                                <option value=""></option>
-                                <% (channels || []).forEach(c => { %>
-                                    <option value="<%= c.id %>"><%= c.name %></option>
-                                <% }) %>
-                            </select>
-                        </div>
-                        <div style="flex:1;">
-                            <button id="saveCfg" class="btn btn-primary">Guardar</button>
-                            <div id="saveMsg"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-        </main>
-    </div>
+    </main>
+</div>
 
-    <script>
-        // Lógica de cambio de pestañas limpia
-        const tabs = document.querySelectorAll('.menu-item[data-tab]');
-        const sections = document.querySelectorAll('.dashboard-section');
+<script>
+    // Sistema de navegación limpia (evita solapamientos)
+    document.querySelectorAll('.menu-item[data-tab]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = btn.getAttribute('data-tab');
 
-        tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                e.preventDefault();
-                const target = tab.dataset.tab;
+            // 1. Botones activos
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            btn.classList.add('active');
 
-                // 1. Quitar clases activas de botones
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
+            // 2. Ocultar todas las secciones
+            document.querySelectorAll('.dashboard-section').forEach(sec => sec.style.display = 'none');
 
-                // 2. Ocultar TODAS las secciones antes de mostrar la nueva
-                sections.forEach(s => s.style.display = 'none');
-
-                // 3. Mostrar solo la sección deseada
-                const sectionToShow = document.getElementById(`section-${target}`);
-                if (sectionToShow) sectionToShow.style.display = 'block';
-
-                if (target === 'settings') loadConfig();
-            });
+            // 3. Mostrar la elegida
+            document.getElementById(`section-${target}`).style.display = 'block';
         });
+    });
 
-        // Buscador de usuarios
-        document.getElementById('userSearch').addEventListener('input', (e) => {
-            const val = e.target.value.toLowerCase();
-            document.querySelectorAll('.user-row').forEach(row => {
-                row.style.display = row.getAttribute('data-search').includes(val) ? '' : 'none';
-            });
-        });
+    const guildId = '<%= guild.id %>';
 
-        const guildId = '<%= guild.id %>';
-
-        async function loadConfig() {
-            try {
-                const r = await fetch(`/api/guilds/${guildId}/config`);
-                const j = await r.json();
-                if (j.ok) {
-                    document.getElementById('cfg-prefix').value = j.config.prefix || '.';
-                    if (j.config.welcomeChannel) document.getElementById('cfg-welcome').value = j.config.welcomeChannel;
-                }
-            } catch (err) {}
+    // Lógica Tienda: Gestión
+    function toggleShopForm(mode) {
+        const form = document.getElementById('shop-admin-form');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        if(mode === 'create') {
+            document.getElementById('f-id').value = '';
+            document.getElementById('f-name').value = '';
+            document.getElementById('f-price').value = '';
+            document.getElementById('f-emoji').value = '📦';
+            document.getElementById('f-desc').value = '';
+            document.getElementById('form-title').innerText = 'Crear Nuevo Ítem';
         }
+    }
 
-        document.getElementById('saveCfg').addEventListener('click', async () => {
-            const payload = { prefix: document.getElementById('cfg-prefix').value };
-            const r = await fetch(`/api/guilds/${guildId}/config`, { 
-                method: 'POST', 
-                headers: { 'Content-Type':'application/json' }, 
-                body: JSON.stringify(payload) 
-            });
-            const j = await r.json();
-            document.getElementById('saveMsg').innerText = j.ok ? 'Guardado' : 'Error';
-        });
+    function editItem(json) {
+        const item = JSON.parse(json);
+        toggleShopForm();
+        document.getElementById('form-title').innerText = 'Editando: ' + item.itemName;
+        document.getElementById('f-id').value = item._id;
+        document.getElementById('f-name').value = item.itemName;
+        document.getElementById('f-price').value = item.price;
+        document.getElementById('f-emoji').value = item.emoji;
+        document.getElementById('f-desc').value = item.description;
+    }
 
-        document.addEventListener('click', async (e) => {
-            if (e.target && e.target.classList.contains('buy-guild-btn')) {
-                const itemId = e.target.dataset.item;
-                const resp = await fetch(`/api/guilds/${guildId}/tienda/buy`, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type':'application/json' }, 
-                    body: JSON.stringify({ itemId }) 
-                });
-                const j = await resp.json();
-                if (j.ok) {
-                    alert('¡Comprado!');
-                    window.location.reload();
-                }
-            }
+    async function submitItem() {
+        const id = document.getElementById('f-id').value;
+        const payload = {
+            action: id ? 'edit' : 'create',
+            id: id,
+            itemName: document.getElementById('f-name').value,
+            price: document.getElementById('f-price').value,
+            emoji: document.getElementById('f-emoji').value,
+            description: document.getElementById('f-desc').value,
+            type: 'normal'
+        };
+
+        const res = await fetch(`/api/guilds/${guildId}/items/manage`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
         });
-    </script>
+        if((await res.json()).ok) location.reload();
+    }
+
+    async function deleteItem(id) {
+        if(!confirm('¿Estás seguro de que quieres eliminar este ítem?')) return;
+        const res = await fetch(`/api/guilds/${guildId}/items/manage`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'delete', id: id })
+        });
+        if((await res.json()).ok) location.reload();
+    }
+
+    // Lógica Tienda: Compra
+    async function buyItem(itemId) {
+        const res = await fetch(`/api/guilds/${guildId}/tienda/buy`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ itemId })
+        });
+        const data = await res.json();
+        if(data.ok) {
+            alert('¡Compra realizada con éxito! Nuevo saldo: $' + data.newBalance);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'No se pudo completar la compra'));
+        }
+    }
+</script>
 
 <%- include('partials/footer') %>
