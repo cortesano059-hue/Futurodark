@@ -100,14 +100,29 @@
                     <label>Prefijo de comandos</label>
                     <input id="cfg-prefix" class="eco-input" placeholder="." />
 
-                    <label>Canal de bienvenida (ID)</label>
-                    <input id="cfg-welcome" class="eco-input" placeholder="channel id" />
+                    <label>Canal de bienvenida</label>
+                    <select id="cfg-welcome" class="eco-input">
+                        <option value="">— Ninguno —</option>
+                        <% (channels || []).forEach(c => { %>
+                            <option value="<%= c.id %>"><%= c.name %> — <%= c.id %></option>
+                        <% }) %>
+                    </select>
 
-                    <label>Canal de salida (ID)</label>
-                    <input id="cfg-leave" class="eco-input" placeholder="channel id" />
+                    <label>Canal de salida</label>
+                    <select id="cfg-leave" class="eco-input">
+                        <option value="">— Ninguno —</option>
+                        <% (channels || []).forEach(c => { %>
+                            <option value="<%= c.id %>"><%= c.name %> — <%= c.id %></option>
+                        <% }) %>
+                    </select>
 
-                    <label>Rol de moderadores (ID)</label>
-                    <input id="cfg-mods" class="eco-input" placeholder="role id" />
+                    <label>Rol de moderadores</label>
+                    <select id="cfg-mods" class="eco-input">
+                        <option value="">— Ninguno —</option>
+                        <% (roles || []).forEach(r => { %>
+                            <option value="<%= r.id %>"><%= r.name %> — <%= r.id %></option>
+                        <% }) %>
+                    </select>
 
                     <div style="display:flex; gap:10px; margin-top:10px;">
                         <button id="saveCfg" class="btn btn-primary">Guardar</button>
@@ -159,9 +174,9 @@
                 if (j.ok) {
                     const cfg = j.config || {};
                     document.getElementById('cfg-prefix').value = cfg.prefix || '.';
-                    document.getElementById('cfg-welcome').value = cfg.welcomeChannel || '';
-                    document.getElementById('cfg-leave').value = cfg.leaveChannel || '';
-                    document.getElementById('cfg-mods').value = cfg.modsRole || '';
+                    if (cfg.welcomeChannel) document.getElementById('cfg-welcome').value = cfg.welcomeChannel;
+                    if (cfg.leaveChannel) document.getElementById('cfg-leave').value = cfg.leaveChannel;
+                    if (cfg.modsRole) document.getElementById('cfg-mods').value = cfg.modsRole;
                 } else {
                     document.getElementById('saveMsg').innerText = 'No se pudo cargar la configuración';
                 }
