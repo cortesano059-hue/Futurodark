@@ -1,20 +1,5 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Meta tags dinámicos -->
-    <meta property="og:title" content="Comandos - <%= bot.username %>">
-    <meta property="og:description" content="Lista completa de comandos y utilidades de <%= bot.username %>.">
-    <meta property="og:image" content="<%= bot.displayAvatarURL({format: 'png', size: 512}) %>">
-    <meta property="og:theme-color" content="#ff4757">
-    <link rel="icon" href="<%= bot.displayAvatarURL({format: 'png'}) %>">
+<%- include('partials/header') %>
 
-    <title>Comandos - <%= bot.username %></title>
-    <!-- Font Awesome para iconos -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
         /* --- VARIABLES DE DISEÑO --- */
         :root {
@@ -188,33 +173,7 @@
             .col-desc { border-left: none; padding-left: 0; padding-top: 10px; border-top: 1px solid var(--border); }
         }
     </style>
-</head>
-<body>
-
-    <!-- NAVBAR COMÚN -->
-    <nav class="top-navbar">
-        <div class="nav-left">
-            <img src="<%= bot.displayAvatarURL({format: 'png'}) %>" class="nav-logo" alt="Logo">
-            <a href="/" class="nav-brand"><%= bot.username %></a>
-        </div>
-
-        <div class="nav-center">
-            <a href="/comandos" class="nav-link active">Comandos</a>
-            <a href="/dashboard" class="nav-link">Dashboard</a>
-            <a href="/leaderboard" class="nav-link">Leaderboard</a>
-        </div>
-
-        <div class="nav-right">
-            <% if(user) { %>
-                <div class="user-profile" onclick="window.location.href='/dashboard'">
-                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="user-avatar" alt="Avatar">
-                    <span style="font-weight: 600; font-size: 13px;"><%= user.username %></span>
-                </div>
-            <% } else { %>
-                <a href="/login" class="nav-link" style="color: var(--accent); font-weight: 800;">Iniciar Sesión</a>
-            <% } %>
-        </div>
-    </nav>
+    </style>
 
     <div class="main-wrapper">
         <div class="glass-panel">
@@ -314,5 +273,5 @@
             }
         }
     </script>
-</body>
-</html>
+
+<%- include('partials/footer') %>
