@@ -12,175 +12,203 @@
 
         <aside class="options-sidebar">
             <div style="padding:20px; font-weight:bold; border-bottom:1px solid #2f3136;"><%= guild.name %></div>
-            <a href="#" class="menu-item active" id="tab-profile"><i class="fas fa-chart-pie"></i> Mi Perfil</a>
-            <a href="#" class="menu-item" id="tab-shop"><i class="fas fa-store"></i> Tienda</a>
-            <a href="#" class="menu-item" id="tab-settings"><i class="fas fa-cog"></i> Configuración</a>
+            <a href="#" class="menu-item active" data-tab="profile"><i class="fas fa-chart-pie"></i> Mi Perfil</a>
+            <a href="#" class="menu-item" data-tab="shop"><i class="fas fa-store"></i> Tienda</a>
+            <a href="#" class="menu-item" data-tab="inventory"><i class="fas fa-briefcase"></i> Inventario</a>
+            <a href="#" class="menu-item" data-tab="settings"><i class="fas fa-cog"></i> Configuración</a>
+            
             <div style="margin-top: auto; padding-bottom: 20px;">
                 <a href="/logout" class="menu-item" style="color:#ed4245;"><i class="fas fa-power-off"></i> Salir</a>
             </div>
         </aside>
 
         <main class="content-area">
-            <div class="card">
-                <h2 style="margin:0 0 20px 0;">Resumen de <%= user.username %></h2>
-                <div style="display:flex; gap:20px;">
-                    <div style="flex:1; background:#2f3136; padding:20px; border-radius:8px; border-bottom: 3px solid #43b581;">
-                        <div style="color:#43b581; font-size:11px; font-weight:bold;">CARTERA</div>
-                        <div style="font-size:24px; font-weight:bold;">$<%= economy.money.toLocaleString() %></div>
+            
+            <div id="section-profile" class="dashboard-section">
+                <div class="card">
+                    <h2 style="margin:0 0 20px 0;">Resumen de <%= user.username %></h2>
+                    <div style="display:flex; gap:20px;">
+                        <div style="flex:1; background:#2f3136; padding:20px; border-radius:8px; border-bottom: 3px solid #43b581;">
+                            <div style="color:#43b581; font-size:11px; font-weight:bold;">CARTERA</div>
+                            <div style="font-size:24px; font-weight:bold;">$<%= economy.money.toLocaleString() %></div>
+                        </div>
+                        <div style="flex:1; background:#2f3136; padding:20px; border-radius:8px; border-bottom: 3px solid #f1c40f;">
+                            <div style="color:#f1c40f; font-size:11px; font-weight:bold;">BANCO</div>
+                            <div style="font-size:24px; font-weight:bold;">$<%= economy.bank.toLocaleString() %></div>
+                        </div>
                     </div>
-                    <div style="flex:1; background:#2f3136; padding:20px; border-radius:8px; border-bottom: 3px solid #f1c40f;">
-                        <div style="color:#f1c40f; font-size:11px; font-weight:bold;">BANCO</div>
-                        <div style="font-size:24px; font-weight:bold;">$<%= economy.bank.toLocaleString() %></div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin:0 0 15px 0; font-size:16px;">Lista de Usuarios</h3>
+                    <input type="text" id="userSearch" placeholder="Buscar por nombre o ID..." class="eco-input">
+                    <table class="eco-table">
+                        <thead>
+                            <tr><th>Usuario</th><th>Cartera</th><th>Banco</th></tr>
+                        </thead>
+                        <tbody id="userTable">
+                            <% allUsers.forEach(u => { %>
+                                <tr class="user-row" data-search="<%= u.displayName.toLowerCase() %> <%= u.userId %>">
+                                    <td>
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <img src="<%= u.avatarUrl %>" style="width:32px; border-radius:50%;">
+                                            <div>
+                                                <div style="font-size:13px; font-weight:600;"><%= u.displayName %></div>
+                                                <div style="font-size:10px; color:var(--dim);"><%= u.userId %></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><span class="val-pill" style="color:#2ecc71;">$<%= u.money.toLocaleString() %></span></td>
+                                    <td><span class="val-pill" style="color:#f1c40f;">$<%= u.bank.toLocaleString() %></span></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="section-shop" class="dashboard-section" style="display:none;">
+                <div class="card">
+                    <h3 style="margin:0 0 15px 0; font-size:16px;">Tienda de <%= guild.name %></h3>
+                    <div class="shop-grid">
+                        <% if(items && items.length){ %>
+                            <% items.forEach(item => { %>
+                                <div class="shop-card">
+                                    <div class="shop-icon"><img src="<%= item.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt=""></div>
+                                    <div class="shop-body">
+                                        <div class="shop-title"><%= item.name %></div>
+                                        <div class="shop-desc"><%= item.description %></div>
+                                    </div>
+                                    <div class="shop-footer">
+                                        <div class="price"><%= item.price %> <span class="coin">🪙</span></div>
+                                        <button class="btn btn-primary buy-guild-btn" data-item="<%= item.id %>">Comprar</button>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        <% } else { %>
+                            <p>No hay artículos en la tienda de este servidor.</p>
+                        <% } %>
                     </div>
                 </div>
             </div>
 
-            <div class="card" id="shop-card" style="display:none;">
-                <h3 style="margin:0 0 15px 0; font-size:16px;">Tienda de <%= guild.name %></h3>
-                <main class="content-area shop-grid">
-                    <% if(items && items.length){ %>
-                        <% items.forEach(item => { %>
-                            <div class="shop-card">
-                                <div class="shop-icon"><img src="<%= item.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt=""></div>
-                                <div class="shop-body">
-                                    <div class="shop-title"><%= item.name %></div>
-                                    <div class="shop-desc"><%= item.description %></div>
+            <div id="section-inventory" class="dashboard-section" style="display:none;">
+                <div class="card">
+                    <h3 style="margin:0 0 15px 0; font-size:16px;">Tu Inventario</h3>
+                    <% if(inventory && inventory.length){ %>
+                        <div class="inventory-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px;">
+                            <% inventory.forEach(it => { %>
+                                <div class="inv-card" style="background:#2f3136; padding:15px; border-radius:8px; text-align:center; border: 1px solid #3e4046;">
+                                    <img src="<%= it.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="" style="width:48px; height:48px; border-radius:8px; margin-bottom:10px;">
+                                    <div class="inv-name" style="font-size:12px; font-weight:600;"><%= it.name %></div>
+                                    <div class="inv-count" style="font-size:11px; color:var(--dim);">x<%= it.count %></div>
                                 </div>
-                                <div class="shop-footer">
-                                    <div class="price"><%= item.price %> <span class="coin">🪙</span></div>
-                                    <button class="btn btn-primary buy-guild-btn" data-item="<%= item.id %>">Comprar</button>
-                                </div>
-                            </div>
-                        <% }) %>
+                            <% }) %>
+                        </div>
                     <% } else { %>
-                        <p>No hay artículos en la tienda de este servidor.</p>
+                        <p style="color:var(--text-dim);">No tienes artículos en tu inventario.</p>
                     <% } %>
-                </main>
+                </div>
             </div>
 
-            <div class="card">
-                <h3 style="margin:0 0 15px 0; font-size:16px;">Lista de Usuarios</h3>
-                <input type="text" id="userSearch" placeholder="Buscar por nombre o ID..." class="eco-input">
-                
-                <table class="eco-table">
-                    <thead>
-                        <tr><th>Usuario</th><th>Cartera</th><th>Banco</th></tr>
-                    </thead>
-                    <tbody id="userTable">
-                        <% allUsers.forEach(u => { %>
-                            <tr class="user-row" data-search="<%= u.displayName.toLowerCase() %> <%= u.userId %>">
-                                <td>
-                                    <div style="display:flex; align-items:center; gap:10px;">
-                                        <img src="<%= u.avatarUrl %>" style="width:32px; border-radius:50%;">
-                                        <div>
-                                            <div style="font-size:13px; font-weight:600;"><%= u.displayName %></div>
-                                            <div style="font-size:10px; color:var(--dim);"><%= u.userId %></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><span class="val-pill" style="color:#2ecc71;">$<%= u.money.toLocaleString() %></span></td>
-                                <td><span class="val-pill" style="color:#f1c40f;">$<%= u.bank.toLocaleString() %></span></td>
-                            </tr>
-                        <% }) %>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="card" id="settings-card" style="display:none;">
-                        <h3 style="margin:0 0 15px 0; font-size:18px;">Configuración</h3>
-                        <div style="display:flex; gap:24px; flex-wrap:wrap;">
-                            <div style="flex:1; min-width:280px;">
-                                <label style="font-size:13px; color:var(--dim);">Prefijo de comandos</label>
-                                <input id="cfg-prefix" class="eco-input" placeholder="." style="font-weight:600; font-size:16px;" />
+            <div id="section-settings" class="dashboard-section" style="display:none;">
+                <div class="card">
+                    <h3 style="margin:0 0 15px 0; font-size:18px;">Configuración</h3>
+                    <div style="display:flex; gap:24px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:280px;">
+                            <label style="font-size:13px; color:var(--dim);">Prefijo de comandos</label>
+                            <input id="cfg-prefix" class="eco-input" placeholder="." style="font-weight:600; font-size:16px;" />
 
-                                <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de bienvenida</label>
-                                <select id="cfg-welcome" class="eco-input">
-                                        <option value=""></option>
-                                        <% (channels || []).forEach(c => { %>
-                                            <option value="<%= c.id %>"><%= c.name %></option>
-                                        <% }) %>
-                                    </select>
+                            <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de bienvenida</label>
+                            <select id="cfg-welcome" class="eco-input">
+                                <option value=""></option>
+                                <% (channels || []).forEach(c => { %>
+                                    <option value="<%= c.id %>"><%= c.name %></option>
+                                <% }) %>
+                            </select>
 
-                                <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de salida</label>
-                                <select id="cfg-leave" class="eco-input">
-                                        <option value=""></option>
-                                        <% (channels || []).forEach(c => { %>
-                                            <option value="<%= c.id %>"><%= c.name %></option>
-                                        <% }) %>
-                                    </select>
-                            </div>
+                            <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de salida</label>
+                            <select id="cfg-leave" class="eco-input">
+                                <option value=""></option>
+                                <% (channels || []).forEach(c => { %>
+                                    <option value="<%= c.id %>"><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
 
-                            <div style="flex:1; min-width:240px;">
-                                <label style="font-size:13px; color:var(--dim);">Rol de moderadores</label>
-                                <select id="cfg-mods" class="eco-input">
-                                    <option value=""></option>
-                                    <% (roles || []).forEach(r => { %>
-                                        <option value="<%= r.id %>">@<%= r.name %></option>
-                                    <% }) %>
-                                </select>
-
-                                <div style="margin-top:18px; font-size:13px; color:var(--dim);">Sugerencia: usa roles y canales para mensajes automáticos.</div>
-
-                                <div style="display:flex; gap:10px; margin-top:18px;">
-                                    <button id="saveCfg" style="background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; font-weight:600;">Guardar</button>
-                                    <button id="cancelCfg" style="background:transparent; color:var(--dim); border:1px solid #2f3136; padding:10px 14px; border-radius:6px; cursor:pointer;">Cancelar</button>
-                                    <div id="saveMsg" style="margin-left:10px;color:var(--dim); align-self:center;"></div>
-                                </div>
+                        <div style="flex:1; min-width:240px;">
+                            <label style="font-size:13px; color:var(--dim);">Rol de moderadores</label>
+                            <select id="cfg-mods" class="eco-input">
+                                <option value=""></option>
+                                <% (roles || []).forEach(r => { %>
+                                    <option value="<%= r.id %>">@<%= r.name %></option>
+                                <% }) %>
+                            </select>
+                            <div style="margin-top:18px; font-size:13px; color:var(--dim);">Sugerencia: usa roles y canales para mensajes automáticos.</div>
+                            <div style="display:flex; gap:10px; margin-top:18px;">
+                                <button id="saveCfg" style="background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; font-weight:600;">Guardar</button>
+                                <button id="cancelCfg" style="background:transparent; color:var(--dim); border:1px solid #2f3136; padding:10px 14px; border-radius:6px; cursor:pointer;">Cancelar</button>
+                                <div id="saveMsg" style="margin-left:10px;color:var(--dim); align-self:center;"></div>
                             </div>
                         </div>
+                    </div>
+                </div>
             </div>
+            
         </main>
     </div>
 
     <script>
+        // LÓGICA DE NAVEGACIÓN ENTRE TABS (Evita solapamientos)
+        const menuItems = document.querySelectorAll('.menu-item[data-tab]');
+        const sections = document.querySelectorAll('.dashboard-section');
+
+        menuItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetTab = item.getAttribute('data-tab');
+
+                // 1. Limpiar estado de botones
+                menuItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+
+                // 2. Ocultar todas las secciones
+                sections.forEach(s => s.style.display = 'none');
+
+                // 3. Mostrar la sección elegida
+                const activeSection = document.getElementById(`section-${targetTab}`);
+                if (activeSection) {
+                    activeSection.style.display = 'block';
+                }
+
+                // Carga especial si es settings
+                if (targetTab === 'settings') loadConfig();
+            });
+        });
+
+        // LÓGICA DE BÚSQUEDA DE USUARIOS
         document.getElementById('userSearch').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             document.querySelectorAll('.user-row').forEach(row => {
                 row.style.display = row.getAttribute('data-search').includes(val) ? '' : 'none';
             });
         });
-        // Settings panel logic
+
         const guildId = '<%= guild.id %>';
-        const tabProfile = document.getElementById('tab-profile');
-        const tabSettings = document.getElementById('tab-settings');
-        const settingsCard = document.getElementById('settings-card');
-        const userCard = document.querySelector('.card');
 
-        tabSettings.addEventListener('click', (e) => {
-            e.preventDefault();
-            // show settings card
-            settingsCard.style.display = '';
-            // hide the users card (the previous .card after summary is users)
-            document.querySelectorAll('.card')[1].style.display = 'none';
-            tabProfile.classList.remove('active');
-            tabSettings.classList.add('active');
-            loadConfig();
-        });
-
-        tabProfile.addEventListener('click', (e) => {
-            e.preventDefault();
-            settingsCard.style.display = 'none';
-            document.querySelectorAll('.card')[1].style.display = '';
-            tabProfile.classList.add('active');
-            tabSettings.classList.remove('active');
-        });
-
+        // LÓGICA DE CONFIGURACIÓN
         async function loadConfig() {
             try {
                 const r = await fetch(`/api/guilds/${guildId}/config`);
                 const j = await r.json();
-                        if (j.ok) {
-                            const cfg = j.config || {};
-                            document.getElementById('cfg-prefix').value = cfg.prefix || '.';
-                            if (cfg.welcomeChannel) document.getElementById('cfg-welcome').value = cfg.welcomeChannel;
-                            if (cfg.leaveChannel) document.getElementById('cfg-leave').value = cfg.leaveChannel;
-                            if (cfg.modsRole) document.getElementById('cfg-mods').value = cfg.modsRole;
-                        } else {
-                    document.getElementById('saveMsg').innerText = 'No se pudo cargar la configuración';
+                if (j.ok) {
+                    const cfg = j.config || {};
+                    document.getElementById('cfg-prefix').value = cfg.prefix || '.';
+                    if (cfg.welcomeChannel) document.getElementById('cfg-welcome').value = cfg.welcomeChannel;
+                    if (cfg.leaveChannel) document.getElementById('cfg-leave').value = cfg.leaveChannel;
+                    if (cfg.modsRole) document.getElementById('cfg-mods').value = cfg.modsRole;
                 }
-            } catch (err) {
-                document.getElementById('saveMsg').innerText = 'Error conectando al servidor';
-            }
+            } catch (err) { console.error("Error cargando config", err); }
         }
 
         document.getElementById('saveCfg').addEventListener('click', async () => {
@@ -192,47 +220,34 @@
             };
             const saveBtn = document.getElementById('saveCfg');
             saveBtn.disabled = true;
-            saveBtn.style.opacity = '0.7';
             document.getElementById('saveMsg').innerText = 'Guardando...';
             try {
-                const r = await fetch(`/api/guilds/${guildId}/config`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+                const r = await fetch(`/api/guilds/${guildId}/config`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type':'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
                 const j = await r.json();
-                if (j.ok) {
-                    document.getElementById('saveMsg').innerText = 'Guardado correctamente';
-                } else {
-                    document.getElementById('saveMsg').innerText = 'Error guardando: ' + (j.error || 'unknown');
-                }
-            } catch (err) {
-                document.getElementById('saveMsg').innerText = 'Error de red';
-            }
-            setTimeout(()=>{ document.getElementById('saveMsg').innerText=''; saveBtn.disabled=false; saveBtn.style.opacity='1'; }, 2500);
+                document.getElementById('saveMsg').innerText = j.ok ? 'Guardado correctamente' : 'Error al guardar';
+            } catch (err) { document.getElementById('saveMsg').innerText = 'Error de red'; }
+            setTimeout(()=>{ document.getElementById('saveMsg').innerText=''; saveBtn.disabled=false; }, 2500);
         });
 
-        document.getElementById('cancelCfg').addEventListener('click', () => { tabProfile.click(); });
-
-        // Shop tab logic
-        const tabShop = document.getElementById('tab-shop');
-        const shopCard = document.getElementById('shop-card');
-        tabShop.addEventListener('click', (e) => {
-            e.preventDefault();
-            // show shop
-            shopCard.style.display = '';
-            // hide other main card(s)
-            document.querySelectorAll('.card')[0].style.display = 'none';
-            document.querySelectorAll('.card')[1].style.display = 'none';
-            settingsCard.style.display = 'none';
-            tabProfile.classList.remove('active');
-            tabSettings.classList.remove('active');
-            tabShop.classList.add('active');
+        document.getElementById('cancelCfg').addEventListener('click', () => { 
+            document.querySelector('[data-tab="profile"]').click(); 
         });
 
-        // Buy from guild shop
+        // COMPRAR EN TIENDA
         document.addEventListener('click', async (e) => {
             if (e.target && e.target.classList.contains('buy-guild-btn')) {
                 const itemId = e.target.dataset.item;
                 e.target.disabled = true; e.target.innerText = 'Comprando...';
                 try {
-                    const resp = await fetch(`/api/guilds/${guildId}/tienda/buy`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ itemId }) });
+                    const resp = await fetch(`/api/guilds/${guildId}/tienda/buy`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type':'application/json' }, 
+                        body: JSON.stringify({ itemId }) 
+                    });
                     const j = await resp.json();
                     if (!j.ok) return alert('Error: ' + (j.error || 'unknown'));
                     alert('Compra realizada. Nuevo saldo: ' + j.newBalance);
