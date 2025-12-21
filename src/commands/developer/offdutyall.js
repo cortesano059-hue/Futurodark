@@ -5,7 +5,7 @@ const safeReply = require("@src/utils/safeReply.js");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("offdutyall")
-    .setDescription("Saca de servicio a todos los usuarios y les paga lo que les corresponde.")
+    .setDescription("Saca de servicio a todos los usuarios.")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {

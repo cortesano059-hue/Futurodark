@@ -1,3 +1,6 @@
+// 1. ESTO OBLIGATORIAMENTE ARRIBA DEL TODO
+require("dotenv").config(); 
+
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
@@ -6,6 +9,7 @@ const { Schema } = mongoose;
 /* ========================================================================== */
 
 if (process.env.RUNNING_BOT === "true") {
+  // Ahora sí funcionará porque ya hemos leído el .env arriba
   mongoose
     .connect(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 30000,

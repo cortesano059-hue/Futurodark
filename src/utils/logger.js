@@ -1,7 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const { WebhookClient, EmbedBuilder } = require('discord.js');
-const Transaction = require('@transactionModel'); // Importar el nuevo modelo
+
+// Intentar cargar el modelo Transaction mediante alias; si falla, usar fallback relativo
+let Transaction = null;
+try {
+    Transaction = require('@transactionModel');
+} catch (err) {
+    try {
+        Transaction = require(path.join(__dirname, '..', 'database', 'Transaction.js'));
+    } catch (err2) {
+        Transaction = null;
+        console.warn('⚠️ Transaction model no disponible (alias @transactionModel no resuelto)');
+    }
+}
 
 // Archivos de log locales
 const LOG_FILE = path.join(__dirname, 'bot.log');

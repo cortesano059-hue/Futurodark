@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - <%= bot.username %></title>
+    
+    <meta property="og:title" content="Leaderboard - <%= bot.username %>">
+    <meta property="og:theme-color" content="#ff4757">
+    <link rel="icon" href="<%= bot.displayAvatarURL({format: 'png'}) %>">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* --- ESTILOS GLOBALES --- */
+        :root {
+            --bg-container: #1e2124; --bg-element: rgba(0, 0, 0, 0.2); --border: #2f3136;
+            --accent: #ff4757; --text-main: #ffffff; --text-dim: #b9bbbe; --navbar-bg: #141619;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background-image: url('https://wallpaperaccess.com/full/1155017.jpg'); 
+            background-size: cover; background-attachment: fixed;
+            box-shadow: inset 0 0 0 2000px rgba(15, 17, 20, 0.92);
+            background-color: #0f1114; color: var(--text-main);
+            font-family: 'Segoe UI', 'Roboto', sans-serif; margin: 0; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* NAVBAR */
+        .top-navbar {
+            width: 100%; height: 60px; background-color: var(--navbar-bg); border-bottom: 1px solid #000000;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 25px;
+            position: sticky; top: 0; z-index: 1000; font-size: 14px;
+        }
+        .nav-left { display: flex; align-items: center; gap: 12px; }
+        .nav-logo { width: 32px; height: 32px; border-radius: 50%; }
+        .nav-brand { font-weight: 700; font-size: 18px; color: white; text-decoration: none; }
+        .nav-center { display: flex; gap: 25px; position: absolute; left: 50%; transform: translateX(-50%); }
+        .nav-link { color: var(--text-dim); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        .nav-link:hover { color: white; }
+        .nav-link.active { color: var(--accent); font-weight: bold; }
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .nav-action { display: flex; align-items: center; gap: 6px; color: var(--text-dim); text-decoration: none; font-weight: 600; transition: 0.2s; }
+        .nav-action:hover { color: white; }
+        .user-profile { display: flex; align-items: center; gap: 8px; padding-left: 15px; border-left: 1px solid var(--border); cursor: pointer; }
+        .user-avatar { width: 28px; height: 28px; border-radius: 50%; }
+        .user-name { font-weight: 600; color: white; }
+
+        /* CONTENEDOR */
+        .main-wrapper { max-width: 1100px; margin: 0 auto; padding: 40px 20px; width: 100%; display: flex; flex-direction: column; align-items: center;}
+
+        /* CAJA PRINCIPAL */
+        .panel-box {
+            background-color: var(--bg-container); border: 1px solid var(--border); border-radius: 8px;
+            padding: 40px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 100%;
+            position: relative; overflow: hidden;
+        }
+        .panel-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
+
+        .section-title { font-size: 26px; margin-bottom: 5px; font-weight: 600; color: white; }
+        .section-subtitle { color: var(--text-dim); font-size: 12px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        /* GRID */
+        .servers-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 25px; }
+        .server-card { width: 110px; text-decoration: none; display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
+        .server-card:hover { transform: translateY(-5px); }
+        .server-icon {
+            width: 90px; height: 90px; border-radius: 50%; background-color: #36393f; background-size: cover; background-position: center;
+            border: 3px solid transparent; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: white;
+            transition: all 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .server-card:hover .server-icon { border-color: white; box-shadow: 0 0 20px rgba(255,255,255,0.3); }
+        .server-name { margin-top: 10px; font-size: 13px; color: var(--text-dim); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; opacity: 0; transition: 0.3s; font-weight: 600; }
+        .server-card:hover .server-name { opacity: 1; transform: translateY(5px); }
+
+        @media (max-width: 900px) { .nav-center { display: none; } }
+    </style>
+</head>
+<body>
+
+    <nav class="top-navbar">
+        <div class="nav-left">
+            <img src="<%= bot.displayAvatarURL({format: 'png'}) %>" class="nav-logo">
+            <a href="/" class="nav-brand"><%= bot.username %></a>
+        </div>
+        <div class="nav-center">
+            <a href="/comandos" class="nav-link">Comandos</a>
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/leaderboard" class="nav-link active">Leaderboard</a>
+        </div>
+        <div class="nav-right">
+            <a href="https://discord.com/oauth2/authorize?client_id=1190705096963657858&permissions=8&scope=bot%20applications.commands" target="_blank" class="nav-action">
+                <i class="fab fa-discord"></i> Invitar
+            </a>
+            <% if(user) { %>
+                <div class="user-profile">
+                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="user-avatar">
+                    <span class="user-name"><%= user.username %></span>
+                </div>
+                <a href="/logout" class="nav-action" style="font-size:12px; color:#ed4245;">Salir</a>
+            <% } %>
+        </div>
+    </nav>
+
+    <div class="main-wrapper">
+        <div class="panel-box">
+            <div class="section-title">Leaderboard</div>
+            <div class="section-subtitle">Select a server to view rankings</div>
+
+            <div class="servers-grid">
+                <% if(guilds.length > 0) { %>
+                    <% guilds.forEach(guild => { %>
+                        <a href="/leaderboard/<%= guild.id %>" class="server-card">
+                            <% if(guild.icon) { %>
+                                <div class="server-icon" style="background-image: url('<%= guild.icon %>');"></div>
+                            <% } else { %>
+                                <div class="server-icon"><%= guild.acronym %></div>
+                            <% } %>
+                            <div class="server-name"><%= guild.name %></div>
+                        </a>
+                    <% }) %>
+                <% } else { %>
+                    <p style="color:#b9bbbe;">No compartes servidores con el bot.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

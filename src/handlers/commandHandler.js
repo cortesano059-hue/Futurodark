@@ -1,4 +1,3 @@
-// src/handlers/commandHandler.js
 const fs = require('fs');
 const path = require('path');
 
@@ -38,9 +37,17 @@ module.exports = async function commandHandler(client) {
                 const cmd = require(full);
 
                 if (cmd?.data && cmd?.execute) {
+                    
+                    // 🆕 NUEVO: Detectamos el nombre de la carpeta actual
+                    // Si el archivo está en 'commands/Economia', esto devuelve 'Economia'
+                    const folderName = path.basename(dir);
+                    
+                    // Guardamos la carpeta dentro del comando para que la web la lea
+                    cmd.folder = folderName; 
+
                     client.commands.set(cmd.data.name, cmd);
                     client.commandArray.push(cmd.data.toJSON());
-                    console.log(`✔ Comando cargado: ${cmd.data.name}`);
+                    console.log(`✔ Comando cargado: ${cmd.data.name} (Carpeta: ${folderName})`);
                 } else {
                     console.warn(`⚠ Comando inválido: ${full}`);
                 }
@@ -53,5 +60,5 @@ module.exports = async function commandHandler(client) {
 
     traverse(commandsDir);
 
-    console.log("📌 Comandos cargados. (Listos para registrarse en ready.js)");
+    console.log("📌 Comandos cargados y clasificados por carpetas.");
 };

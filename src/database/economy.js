@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const {
   User,
   Item,
@@ -10,6 +11,7 @@ const {
   MariConfig,
   MiningConfig,
 } = require("./mongodb.js");
+
 const logger = require("@logger");
 
 /**
@@ -178,42 +180,63 @@ module.exports = {
   },
 
   /* ===========================
-     COOLDOWNS
+     ITEMS
   =========================== */
-  async setWorkCooldown(userId, guildId, ts) {
-    const u = await this.getUser(userId, guildId);
-    u.work_cooldown = Number(ts);
-    await u.save();
-    return u.work_cooldown;
+
+  async getItemByName(guildId, name) {
+    if (!guildId || !name) return null;
+    return Item.findOne({
+      guildId,
+      itemName: { $regex: `^${name}$`, $options: "i" },
+    });
   },
 
-  async getWorkCooldown(userId, guildId) {
-    const u = await this.getUser(userId, guildId);
-    return u ? Number(u.work_cooldown || 0) : 0;
+  async getAllItems(guildId) {
+    if (!guildId) return [];
+    return Item.find({ guildId }).sort({ itemName: 1 });
   },
 
-  async setTrashCooldown(userId, guildId, ts) {
-    const u = await this.getUser(userId, guildId);
-    u.trash_cooldown = Number(ts);
-    await u.save();
-    return u.trash_cooldown;
-  },
+  /**
+   * ✅ IMPLEMENTACIÓN REAL DE createItem
+   * Usada por /item crear
+   */
+  async createItem(guildId, data = {}) {
+    if (!guildId || !data?.itemName) {
+      throw new Error("INVALID_ITEM_DATA");
+    }
 
-  async getTrashCooldown(userId, guildId) {
-    const u = await this.getUser(userId, guildId);
-    return u ? Number(u.trash_cooldown || 0) : 0;
-  },
+    const exists = await Item.findOne({
+      guildId,
+      itemName: { $regex: `^${data.itemName}$`, $options: "i" },
+    });
 
-  async claimDaily(userId, guildId) {
-    const u = await this.getUser(userId, guildId);
-    u.daily_claim_at = Date.now();
-    await u.save();
-    return u.daily_claim_at;
+    if (exists) {
+      throw new Error("ITEM_ALREADY_EXISTS");
+    }
+
+    const item = await Item.create({
+      guildId,
+      itemName: data.itemName,
+      description: data.description || "",
+      emoji: data.emoji || "📦",
+      price: Number(data.price || 0),
+      type: data.type || "misc",
+      usable: Boolean(data.usable),
+      sellable: Boolean(data.sellable),
+      inventory: data.inventory !== false,
+
+      // 🔥 CLAVE PARA TU ENGINE
+      actions: Array.isArray(data.actions) ? data.actions : [],
+      requires: Array.isArray(data.requires) ? data.requires : [],
+    });
+
+    return item;
   },
 
   /* ===========================
      INVENTARIO
   =========================== */
+
   async getUserInventory(userId, guildId) {
     const data = await Inventory.find({ userId, guildId }).populate("itemId");
     return data.map(entry => ({
@@ -227,19 +250,6 @@ module.exports = {
       sellable: entry.itemId?.sellable || false,
       inventory: entry.itemId?.inventory ?? true,
     }));
-  },
-
-  async getItemByName(guildId, name) {
-    if (!name) return null;
-    return Item.findOne({
-      guildId,
-      itemName: { $regex: `^${name}$`, $options: "i" },
-    });
-  },
-
-  async getAllItems(guildId) {
-    if (!guildId) return [];
-    return Item.find({ guildId }).sort({ itemName: 1 });
   },
 
   async hasItem(userId, guildId, itemName) {
@@ -302,6 +312,7 @@ module.exports = {
   /* ===========================
      MINERÍA
   =========================== */
+
   async getMiningCooldown(userId, guildId) {
     const u = await this.getUser(userId, guildId);
     return u ? Number(u.mining_cooldown || 0) : 0;

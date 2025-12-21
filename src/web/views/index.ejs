@@ -1,0 +1,58 @@
+<%- include('partials/header') %>
+
+    <div class="main-wrapper">
+        <div class="dashboard-card">
+            
+            <h1>Bienvenido a <%= bot.username %></h1>
+            
+            <% if (!user) { %>
+                <div class="subtitle">
+                    Gestiona tu economía y servidor fácilmente.<br>
+                    Roles, dinero y mucho más desde un solo lugar.
+                </div>
+            <% } %>
+
+            <% if (user) { %>
+                <div class="economy-box">
+                    <div class="eco-item">
+                        <span class="eco-label"><i class="fas fa-wallet"></i> Cartera</span>
+                        <div class="eco-val wallet">$<%= economy.money.toLocaleString() %></div>
+                    </div>
+                    <div class="divider-vertical"></div>
+                    <div class="eco-item">
+                        <span class="eco-label"><i class="fas fa-university"></i> Banco</span>
+                        <div class="eco-val bank">$<%= economy.bank.toLocaleString() %></div>
+                    </div>
+                </div>
+            <% } else { %>
+                <p class="login-msg">
+                    Inicia sesión con tu cuenta de Discord para ver tu balance,<br>
+                    tus estadísticas y acceder a funciones exclusivas.
+                </p>
+            <% } %>
+
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="stat-num" data-target="<%= stats.servers %>">0</div>
+                    <div class="stat-label">Servidores</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" data-target="<%= stats.users %>">0</div>
+                    <div class="stat-label">Usuarios</div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <% if (!user) { %>
+                    <a href="/login" class="btn btn-primary">Iniciar Sesión</a>
+                    <a href="/comandos" class="btn btn-secondary">Ver Comandos</a>
+                <% } else { %>
+                    <a href="/dashboard" class="btn btn-primary">Ir al Dashboard</a>
+                    <a href="https://discord.gg/tuserver" class="btn btn-secondary" target="_blank">Soporte</a>
+                <% } %>
+            </div>
+
+        </div>
+    </div>
+
+<%- include('partials/footer') %>
