@@ -330,10 +330,52 @@ module.exports = (client) => {
                 allUsers, 
                 economy: economia,
                 channels,
-                roles
+                roles,
+                // items específicos del servidor (puedes mover esto a DB luego)
+                items: [
+                    { id: 'guild_potion', name: 'Poción del servidor', description: 'Poción útil sólo en este servidor.', price: 75, icon: '/images/potion.png' },
+                    { id: 'guild_banner', name: 'Estandarte del Servidor', description: 'Un banner decorativo para tu perfil.', price: 250, icon: '/images/banner.png' }
+                ]
             });
         } catch (err) {
             res.redirect('/dashboard');
+        }
+    });
+
+    // Compra de tienda específica de servidor
+    app.post('/api/guilds/:guildId/tienda/buy', checkAuth, async (req, res) => {
+        const guildId = req.params.guildId;
+        const itemId = req.body.itemId;
+        if (!itemId) return res.status(400).json({ ok: false, error: 'missing_item' });
+
+        // Comprobar que el usuario pertenece al servidor
+        const isMember = req.user.guilds.some(g => g.id === guildId);
+        if (!isMember) return res.status(403).json({ ok: false, error: 'not_member' });
+
+        // Items por servidor (mismo listado que el render). En producción leer desde DB.
+        const shopItems = {
+            'guild_potion': { id: 'guild_potion', name: 'Poción del servidor', price: 75 },
+            'guild_banner': { id: 'guild_banner', name: 'Estandarte del Servidor', price: 250 }
+        };
+
+        const item = shopItems[itemId];
+        if (!item) return res.status(404).json({ ok: false, error: 'not_found' });
+
+        try {
+            const dbUser = await User.findOne({ userId: req.user.id, guildId });
+            if (!dbUser || dbUser.money < item.price) return res.status(400).json({ ok: false, error: 'insufficient_funds' });
+
+            dbUser.money = dbUser.money - item.price;
+            dbUser.inventory = dbUser.inventory || [];
+            const existing = dbUser.inventory.find(i => i.id === item.id);
+            if (existing) existing.count = (existing.count || 0) + 1;
+            else dbUser.inventory.push({ id: item.id, name: item.name, count: 1, icon: null });
+
+            await dbUser.save();
+            res.json({ ok: true, newBalance: dbUser.money, inventory: dbUser.inventory });
+        } catch (err) {
+            logger.error && logger.error('Guild shop buy error', err);
+            res.status(500).json({ ok: false, error: 'db_error' });
         }
     });
 

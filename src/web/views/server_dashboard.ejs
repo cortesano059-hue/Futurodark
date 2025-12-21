@@ -13,6 +13,7 @@
         <aside class="options-sidebar">
             <div style="padding:20px; font-weight:bold; border-bottom:1px solid #2f3136;"><%= guild.name %></div>
             <a href="#" class="menu-item active" id="tab-profile"><i class="fas fa-chart-pie"></i> Mi Perfil</a>
+            <a href="#" class="menu-item" id="tab-shop"><i class="fas fa-store"></i> Tienda</a>
             <a href="#" class="menu-item" id="tab-settings"><i class="fas fa-cog"></i> Configuración</a>
             <div style="margin-top: auto; padding-bottom: 20px;">
                 <a href="/logout" class="menu-item" style="color:#ed4245;"><i class="fas fa-power-off"></i> Salir</a>
@@ -32,6 +33,29 @@
                         <div style="font-size:24px; font-weight:bold;">$<%= economy.bank.toLocaleString() %></div>
                     </div>
                 </div>
+            </div>
+
+            <div class="card" id="shop-card" style="display:none;">
+                <h3 style="margin:0 0 15px 0; font-size:16px;">Tienda de <%= guild.name %></h3>
+                <main class="content-area shop-grid">
+                    <% if(items && items.length){ %>
+                        <% items.forEach(item => { %>
+                            <div class="shop-card">
+                                <div class="shop-icon"><img src="<%= item.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt=""></div>
+                                <div class="shop-body">
+                                    <div class="shop-title"><%= item.name %></div>
+                                    <div class="shop-desc"><%= item.description %></div>
+                                </div>
+                                <div class="shop-footer">
+                                    <div class="price"><%= item.price %> <span class="coin">🪙</span></div>
+                                    <button class="btn btn-primary buy-guild-btn" data-item="<%= item.id %>">Comprar</button>
+                                </div>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <p>No hay artículos en la tienda de este servidor.</p>
+                    <% } %>
+                </main>
             </div>
 
             <div class="card">
@@ -185,6 +209,39 @@
         });
 
         document.getElementById('cancelCfg').addEventListener('click', () => { tabProfile.click(); });
+
+        // Shop tab logic
+        const tabShop = document.getElementById('tab-shop');
+        const shopCard = document.getElementById('shop-card');
+        tabShop.addEventListener('click', (e) => {
+            e.preventDefault();
+            // show shop
+            shopCard.style.display = '';
+            // hide other main card(s)
+            document.querySelectorAll('.card')[0].style.display = 'none';
+            document.querySelectorAll('.card')[1].style.display = 'none';
+            settingsCard.style.display = 'none';
+            tabProfile.classList.remove('active');
+            tabSettings.classList.remove('active');
+            tabShop.classList.add('active');
+        });
+
+        // Buy from guild shop
+        document.addEventListener('click', async (e) => {
+            if (e.target && e.target.classList.contains('buy-guild-btn')) {
+                const itemId = e.target.dataset.item;
+                e.target.disabled = true; e.target.innerText = 'Comprando...';
+                try {
+                    const resp = await fetch(`/api/guilds/${guildId}/tienda/buy`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ itemId }) });
+                    const j = await resp.json();
+                    if (!j.ok) return alert('Error: ' + (j.error || 'unknown'));
+                    alert('Compra realizada. Nuevo saldo: ' + j.newBalance);
+                    window.location.reload();
+                } catch (err) {
+                    alert('Error al comprar');
+                } finally { e.target.disabled = false; e.target.innerText = 'Comprar'; }
+            }
+        });
     </script>
 
 <%- include('partials/footer') %>

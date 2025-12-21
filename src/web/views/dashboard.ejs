@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <meta property="og:title" content="<%= bot.username %> - Dashboard">
+    <meta property="og:title" content="<%= (bot && bot.username) ? (bot.username + ' - Dashboard') : 'Dashboard' %>">
     <meta property="og:theme-color" content="#ff4757">
-    <link rel="icon" href="<%= bot.displayAvatarURL({format: 'png'}) %>">
+    <link rel="icon" href="<%= (bot && bot.displayAvatarURL) ? bot.displayAvatarURL({format: 'png'}) : 'https://cdn.discordapp.com/embed/avatars/0.png' %>">
 
-    <title><%= bot.username %> - Dashboard</title>
+    <title><%= (bot && bot.username) ? (bot.username + ' - Dashboard') : 'Dashboard' %></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
@@ -204,8 +204,8 @@
 
     <nav class="top-navbar">
         <div class="nav-left">
-            <img src="<%= bot.displayAvatarURL({format: 'png'}) %>" class="nav-logo">
-            <a href="/" class="nav-brand"><%= bot.username %></a>
+            <img src="<%= (bot && bot.displayAvatarURL) ? bot.displayAvatarURL({format: 'png'}) : 'https://cdn.discordapp.com/embed/avatars/0.png' %>" class="nav-logo">
+            <a href="/" class="nav-brand"><%= (bot && bot.username) ? bot.username : 'Mi Bot' %></a>
         </div>
 
         <div class="nav-center">
@@ -215,9 +215,11 @@
         </div>
 
         <div class="nav-right">
-            <a href="https://discord.com/oauth2/authorize?client_id=1190705096963657858&permissions=8&scope=bot%20applications.commands" target="_blank" class="nav-action">
-                <i class="fab fa-discord"></i> Invitar
-            </a>
+            <% if (bot && bot.id) { %>
+                <a href="https://discord.com/oauth2/authorize?client_id=<%= bot.id %>&permissions=8&scope=bot%20applications.commands" target="_blank" class="nav-action">
+                    <i class="fab fa-discord"></i> Invitar
+                </a>
+            <% } %>
             
             <% if(user) { %>
                 <div class="user-profile" onclick="window.location.href='/dashboard'">
@@ -253,7 +255,11 @@
             <div class="section-title" style="font-size: 16px; color: var(--text-dim);">Invitar al Bot</div>
             <div class="guilds-grid">
                 <% inviteGuilds.forEach(g => { %>
+                    <% if (bot && bot.id) { %>
                     <a href="https://discord.com/oauth2/authorize?client_id=<%= bot.id %>&permissions=8&scope=bot%20applications.commands&guild_id=<%= g.id %>" target="_blank" class="guild-card">
+                    <% } else { %>
+                    <a href="/" class="guild-card">
+                    <% } %>
                         <div class="icon-container">
                             <div class="guild-img" id="invite-<%= g.id %>" style="filter: grayscale(0.5); opacity: 0.8;">
                                 <% if(!g.icon) { %><%= g.acronym %><% } %>
