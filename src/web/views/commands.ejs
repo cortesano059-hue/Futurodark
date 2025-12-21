@@ -13,12 +13,12 @@
     <title>Comandos - <%= bot.username %></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* --- PALETA DE COLORES --- */
+        /* --- PALETA DE COLORES SINCRONIZADA --- */
         :root {
             --bg-container: #1e2124; 
             --bg-element: rgba(0, 0, 0, 0.2); 
             --border: #2f3136;
-            --accent: #ff4757; /* ROJO/ROSA */
+            --accent: #ff4757; 
             --text-main: #ffffff;
             --text-dim: #b9bbbe;
             --navbar-bg: #141619;
@@ -40,108 +40,89 @@
             padding-bottom: 50px;
         }
 
-        /* --- NAVBAR (Sincronizada) --- */
+        /* --- NAVBAR (60px exactos como en index) --- */
         .top-navbar {
             width: 100%; height: 60px; background-color: var(--navbar-bg); border-bottom: 1px solid #000000;
             display: flex; align-items: center; justify-content: space-between; padding: 0 25px;
             position: sticky; top: 0; z-index: 1000; font-size: 14px;
         }
-        .nav-left { display: flex; align-items: center; gap: 12px; }
-        .nav-logo { width: 32px; height: 32px; border-radius: 50%; }
-        .nav-brand { font-weight: 700; font-size: 18px; color: white; text-decoration: none; }
+        .nav-left { display: flex; align-items: center; gap: 12px; text-decoration: none; color: white; }
+        .nav-logo { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent); }
+        .nav-brand { font-weight: 700; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* MENÚ CENTRAL ACTUALIZADO */
         .nav-center { display: flex; gap: 25px; position: absolute; left: 50%; transform: translateX(-50%); }
-        .nav-link { color: var(--text-dim); text-decoration: none; font-weight: 500; transition: color 0.2s; }
-        .nav-link:hover { color: white; }
+        .nav-link { color: var(--text-dim); text-decoration: none; font-weight: 500; transition: 0.2s; font-size: 13px; text-transform: uppercase; }
+        .nav-link:hover, .nav-link.active { color: white; }
         .nav-link.active { color: var(--accent); font-weight: bold; }
 
         .nav-right { display: flex; align-items: center; gap: 20px; }
-        .nav-action { display: flex; align-items: center; gap: 6px; color: var(--text-dim); text-decoration: none; font-weight: 600; transition: 0.2s; }
-        .nav-action:hover { color: white; }
-        
-        .user-profile { display: flex; align-items: center; gap: 8px; padding-left: 15px; border-left: 1px solid var(--border); cursor: pointer; }
-        .user-avatar { width: 28px; height: 28px; border-radius: 50%; }
-        .user-name { font-weight: 600; color: white; }
+        .user-profile { display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border); padding-left: 15px; cursor: pointer; }
+        .user-avatar { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--accent); }
 
-        /* WRAPPER */
-        .main-wrapper { max-width: 1200px; margin: 0 auto; padding: 0 20px; margin-top: 40px; }
+        /* --- CONTENEDOR PRINCIPAL --- */
+        .main-wrapper { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
 
-        /* TARJETAS */
-        .card-box {
-            background-color: var(--bg-container); border-radius: 5px; border: 1px solid var(--border); padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        .glass-panel {
+            background: rgba(30, 33, 36, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
         }
 
-        /* INFO CONTAINER */
-        .info-container { margin-bottom: 30px; }
-        .info-header { font-size: 12px; font-weight: 800; text-transform: uppercase; color: white; margin-bottom: 10px; letter-spacing: 0.5px; }
-        .info-text { color: var(--text-dim); font-size: 15px; margin-bottom: 25px; line-height: 1.6; }
-        .code { background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; color: #dcddde; font-size: 13px; border: 1px solid var(--border); }
-        .divider { height: 1px; background: var(--border); margin: 25px 0; width: 100%; opacity: 0.5; }
-
-        /* COMMANDS PANEL */
-        .commands-panel { display: flex; flex-direction: column; gap: 20px; }
-        .panel-header {
-            background: transparent; padding-bottom: 15px; border-bottom: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+        .glass-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent);
+            box-shadow: 0 0 15px var(--accent);
         }
-        .panel-title { font-weight: 800; font-size: 15px; color: white; text-transform: uppercase; letter-spacing: 1px;}
-        
-        .panel-body { display: flex; gap: 35px; align-items: flex-start; }
+
+        /* --- DISEÑO DE COLUMNAS --- */
+        .panel-body { display: flex; gap: 35px; margin-top: 20px; }
 
         /* SIDEBAR */
-        .sidebar {
-            width: 240px; flex-shrink: 0; position: sticky; top: 80px;
-            display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 100px); overflow-y: auto;
-        }
-        .sidebar::-webkit-scrollbar { width: 4px; }
-        .sidebar::-webkit-scrollbar-thumb { background: #2f3136; border-radius: 4px; }
-
+        .sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
         .cat-btn {
-            background: transparent; border: none; color: var(--text-dim); padding: 12px 15px; text-align: left; cursor: pointer; font-size: 14px; font-weight: 500; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;
+            background: transparent; border: none; color: var(--text-dim); padding: 12px 15px;
+            text-align: left; cursor: pointer; font-size: 14px; font-weight: 600; border-radius: 6px;
+            display: flex; justify-content: space-between; align-items: center; transition: 0.2s;
         }
-        .cat-btn:hover { color: white; background-color: rgba(255,255,255,0.05); }
-        .cat-btn.active { background-color: var(--accent); color: white; font-weight: 600; box-shadow: 0 2px 8px rgba(255, 71, 87, 0.4); }
-        .badge { background-color: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .cat-btn:hover { background: rgba(255,255,255,0.05); color: white; }
+        .cat-btn.active { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3); }
+        .badge { background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; font-size: 11px; }
 
-        /* LISTA */
-        .content-area { flex: 1; display: flex; flex-direction: column; }
+        /* CONTENIDO */
+        .content-area { flex: 1; }
         .search-bar {
-            background: var(--bg-element); border: 1px solid var(--border); padding: 15px; border-radius: 6px; color: white; width: 100%; font-size: 14px; outline: none; margin-bottom: 20px; transition: border-color 0.2s;
+            background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 16px;
+            border-radius: 8px; color: white; width: 100%; margin-bottom: 25px; outline: none;
+            transition: 0.3s; font-size: 14px;
         }
-        .search-bar:focus { border-color: var(--accent); }
+        .search-bar:focus { border-color: var(--accent); background: rgba(0,0,0,0.4); }
 
-        /* --- FILAS DE COMANDOS --- */
+        /* FILAS DE COMANDO */
         .cmd-row {
-            background-color: var(--bg-element);
-            border: 1px solid var(--border);
-            border-left: 3px solid transparent; 
-            border-radius: 4px;
-            padding: 15px 25px; 
-            margin-bottom: 8px;
-            display: flex; align-items: center; gap: 30px; 
-            transition: all 0.2s;
+            background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+            border-radius: 8px; padding: 18px 25px; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 30px; transition: 0.2s;
         }
-        
         .cmd-row:hover { 
-            border-color: #50545c; 
-            border-left-color: var(--accent);
-            transform: translateX(4px); 
-            background-color: rgba(255, 71, 87, 0.05);
+            border-color: rgba(255,255,255,0.1); 
+            background: rgba(255, 71, 87, 0.05); 
+            transform: translateX(5px);
+            border-left: 4px solid var(--accent);
         }
-
-        .col-name { width: 200px; flex-shrink: 0; font-family: 'Consolas', monospace; font-weight: bold; color: var(--accent); font-size: 16px; }
-        .col-desc { flex: 1; color: var(--text-dim); font-size: 15px; line-height: 1.5; border-left: 1px solid var(--border); padding-left: 30px; }
+        .col-name { width: 180px; color: var(--accent); font-weight: 800; font-family: 'Consolas', monospace; font-size: 16px; }
+        .col-desc { flex: 1; color: var(--text-dim); font-size: 14px; border-left: 1px solid var(--border); padding-left: 25px; line-height: 1.5; }
+        
         .hidden { display: none !important; }
 
-        @media (max-width: 900px) { .nav-center { display: none; } }
         @media (max-width: 768px) {
             .panel-body { flex-direction: column; }
-            .sidebar { width: 100%; position: static; flex-direction: row; overflow-x: auto; padding-bottom: 15px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-            .cat-btn { white-space: nowrap; flex: 1; justify-content: center; }
-            .cmd-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-            .col-name { width: 100%; border-bottom: 1px solid var(--border); padding-bottom: 8px; border-right: none; margin-bottom: 5px; }
-            .col-desc { border-left: none; padding-left: 0; }
+            .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding-bottom: 10px; }
+            .cmd-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .col-desc { border-left: none; padding-left: 0; padding-top: 10px; border-top: 1px solid var(--border); }
         }
     </style>
 </head>
@@ -160,68 +141,42 @@
         </div>
 
         <div class="nav-right">
-            <a href="https://discord.com/oauth2/authorize?client_id=1190705096963657858&permissions=8&scope=bot%20applications.commands" target="_blank" class="nav-action">
-                <i class="fab fa-discord"></i> Invitar
-            </a>
-            
             <% if(user) { %>
                 <div class="user-profile" onclick="window.location.href='/dashboard'">
                     <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="user-avatar">
-                    <span class="user-name"><%= user.username %></span>
+                    <span style="font-weight: 600; font-size: 13px;"><%= user.username %></span>
                 </div>
-                <a href="/logout" class="nav-action" style="font-size:12px; color:#ed4245;">Salir</a>
             <% } else { %>
-                <a href="/login" class="nav-action">
-                    <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-                </a>
+                <a href="/login" class="nav-link" style="color: var(--accent); font-weight: 800;">Login</a>
             <% } %>
         </div>
     </nav>
 
     <div class="main-wrapper">
-        
-        <div class="card-box info-container">
-            <div class="info-header">Prefijo de Comando</div>
-            <div class="divider"></div>
-            <div class="info-text">
-                Por defecto: <span class="code">/</span> (Slash Commands)<br>
-                Ejemplo: <span class="code">/balance</span>
-            </div>
-            
-            <div class="info-header">Sintaxis de Uso</div>
-            <div class="divider"></div>
-            
-            <div class="info-text" style="margin-bottom:0">
-                <div style="margin-bottom: 8px;">
-                    <span class="code">[]</span> - opcional
-                </div>
-                <div>
-                    <span class="code">&lt;&gt;</span> - obligatorio
-                </div>
-            </div>
-        </div>
-
-        <div class="card-box commands-panel">
-            <div class="panel-header">
-                <div class="panel-title">COMANDOS</div>
+        <div class="glass-panel">
+            <div style="margin-bottom: 30px;">
+                <h1 style="font-size: 24px; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Lista de Comandos</h1>
+                <p style="color: var(--text-dim); font-size: 13px; margin-top: 5px;">Explora todas las funciones disponibles de <%= bot.username %>.</p>
             </div>
 
             <div class="panel-body">
                 <aside class="sidebar">
                     <% let total = 0; Object.keys(grupos).forEach(k => total += grupos[k].length); %>
                     <button class="cat-btn active" onclick="filtrar('Todo', this)">
-                        Todo <span class="badge"><%= total %></span>
+                        <span>TODO</span>
+                        <span class="badge"><%= total %></span>
                     </button>
                     <% Object.keys(grupos).sort().forEach(cat => { %>
                         <button class="cat-btn" onclick="filtrar('<%= cat %>', this)">
-                            <%= cat %>
+                            <span><%= cat.toUpperCase() %></span>
                             <span class="badge"><%= grupos[cat].length %></span>
                         </button>
                     <% }) %>
                 </aside>
 
                 <main class="content-area">
-                    <input type="text" id="search" class="search-bar" placeholder="Buscar..." onkeyup="buscar()">
+                    <input type="text" id="search" class="search-bar" placeholder="¿Qué comando buscas? Escribe aquí..." onkeyup="buscar()">
+                    
                     <div id="list">
                         <% Object.keys(grupos).forEach(cat => { %>
                             <% grupos[cat].forEach(cmd => { %>
@@ -232,36 +187,52 @@
                             <% }) %>
                         <% }) %>
                     </div>
-                    <div id="empty" style="display:none; text-align:center; padding:40px; color:#666;">Sin resultados.</div>
+
+                    <div id="empty" style="display:none; text-align:center; padding: 50px; color: var(--text-dim);">
+                        <i class="fas fa-search" style="font-size: 30px; margin-bottom: 15px; opacity: 0.2;"></i>
+                        <p>No se han encontrado comandos que coincidan con tu búsqueda.</p>
+                    </div>
                 </main>
             </div>
         </div>
-        
     </div>
 
     <script>
         function filtrar(cat, btn) {
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            
             const rows = document.querySelectorAll('.cmd-row');
             rows.forEach(row => {
                 if (cat === 'Todo' || row.dataset.cat === cat) row.classList.remove('hidden');
                 else row.classList.add('hidden');
             });
             document.getElementById('search').value = '';
+            document.getElementById('empty').style.display = 'none';
         }
+
         function buscar() {
             const val = document.getElementById('search').value.toLowerCase();
             const rows = document.querySelectorAll('.cmd-row');
             let count = 0;
-            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+
             rows.forEach(row => {
                 const name = row.dataset.name.toLowerCase();
                 const desc = row.querySelector('.col-desc').innerText.toLowerCase();
-                if (name.includes(val) || desc.includes(val)) { row.classList.remove('hidden'); count++; }
-                else row.classList.add('hidden');
+                
+                if (name.includes(val) || desc.includes(val)) {
+                    row.classList.remove('hidden');
+                    count++;
+                } else {
+                    row.classList.add('hidden');
+                }
             });
+
             document.getElementById('empty').style.display = count === 0 ? 'block' : 'none';
+            // Reset de categorías al buscar
+            if(val !== "") {
+                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            }
         }
     </script>
 </body>

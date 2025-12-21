@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <meta property="og:title" content="<%= bot.username %> - Inicio">
-    <meta property="og:description" content="Gestiona tu economía, niveles y servidores con <%= bot.username %>">
-    <meta property="og:image" content="<%= bot.displayAvatarURL({format: 'png', size: 512}) %>">
+    <meta property="og:title" content="<%= bot && bot.username ? (bot.username + ' - Inicio') : 'Dashboard' %>">
+    <meta property="og:description" content="Gestiona tu economía, niveles y servidores con <%= bot && bot.username ? bot.username : 'tu bot' %>">
+    <meta property="og:image" content="<%= (bot && bot.displayAvatarURL) ? bot.displayAvatarURL({format: 'png', size: 512}) : 'https://cdn.discordapp.com/embed/avatars/0.png' %>">
     <meta property="og:theme-color" content="#ff4757">
     <link rel="icon" href="<%= bot.displayAvatarURL({format: 'png'}) %>">
 
@@ -18,8 +18,8 @@
 
     <nav class="top-navbar">
         <div class="nav-left">
-            <img src="<%= bot.displayAvatarURL({format: 'png'}) %>" class="nav-logo">
-            <a href="/" class="nav-brand"><%= bot.username %></a>
+            <img src="<%= (bot && bot.displayAvatarURL) ? bot.displayAvatarURL({format: 'png'}) : 'https://cdn.discordapp.com/embed/avatars/0.png' %>" class="nav-logo">
+            <a href="/" class="nav-brand"><%= bot && bot.username ? bot.username : 'Mi Bot' %></a>
         </div>
 
         <div class="nav-center">
