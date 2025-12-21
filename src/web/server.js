@@ -85,6 +85,12 @@ module.exports = (client) => {
     app.set('views', path.join(__dirname, 'views'));
     app.set('view engine', 'ejs');
 
+    // Exponer la ruta actual a las vistas para marcar el enlace activo en la barra
+    app.use((req, res, next) => {
+        res.locals.currentPath = req.path || '/';
+        next();
+    });
+
     const checkAuth = (req, res, next) => {
         if (req.isAuthenticated()) return next();
         res.redirect('/login');
@@ -139,6 +145,70 @@ module.exports = (client) => {
             user: req.user || null, 
             grupos 
         });
+    });
+
+    // --- RUTA: TIENDA ---
+    app.get('/tienda', checkAuth, async (req, res) => {
+        // Para facilitar la demo, definimos unos items estáticos aquí.
+        const items = [
+            { id: 'item_potion', name: 'Poción pequena', description: 'Restaura 10 monedas virtuales.', price: 50, icon: '/images/potion.png' },
+            { id: 'item_sword', name: 'Espada de prueba', description: 'Un arma de prueba sin efectos reales.', price: 150, icon: '/images/sword.png' }
+        ];
+
+        // Obtener saldo del usuario desde la base de datos
+        let economia = { money: 0, bank: 0 };
+        try {
+            const data = await User.findOne({ userId: req.user.id, guildId: process.env.GUILD_ID });
+            if (data) { economia.money = data.money; economia.bank = data.bank; }
+        } catch (e) { }
+
+        res.render('tienda', { bot: client.user, user: req.user, items, economy: economia });
+    });
+
+    // Endpoint de compra: simple ejemplo para descontar y añadir al inventario
+    app.post('/api/tienda/buy', checkAuth, async (req, res) => {
+        const itemId = req.body.itemId;
+        if (!itemId) return res.status(400).json({ ok: false, error: 'missing_item' });
+
+        // Lista de items de la tienda (coincide con la vista)
+        const shopItems = {
+            'item_potion': { id: 'item_potion', name: 'Poción pequena', price: 50 },
+            'item_sword': { id: 'item_sword', name: 'Espada de prueba', price: 150 }
+        };
+
+        const item = shopItems[itemId];
+        if (!item) return res.status(404).json({ ok: false, error: 'not_found' });
+
+        try {
+            const dbUser = await User.findOne({ userId: req.user.id, guildId: process.env.GUILD_ID });
+            if (!dbUser || dbUser.money < item.price) return res.status(400).json({ ok: false, error: 'insufficient_funds' });
+
+            // descontar precio
+            dbUser.money = dbUser.money - item.price;
+            // actualizar inventario (campo `inventory` asumido como array de { id, name, count })
+            dbUser.inventory = dbUser.inventory || [];
+            const existing = dbUser.inventory.find(i => i.id === item.id);
+            if (existing) existing.count = (existing.count || 0) + 1;
+            else dbUser.inventory.push({ id: item.id, name: item.name, count: 1, icon: item.icon || null });
+
+            await dbUser.save();
+            res.json({ ok: true, newBalance: dbUser.money, inventory: dbUser.inventory });
+        } catch (err) {
+            logger.error && logger.error('Buy error', err);
+            res.status(500).json({ ok: false, error: 'db_error' });
+        }
+    });
+
+    // --- RUTA: INVENTARIO ---
+    app.get('/inventario', checkAuth, async (req, res) => {
+        try {
+            const dbUser = await User.findOne({ userId: req.user.id, guildId: process.env.GUILD_ID }) || {};
+            const inventory = dbUser.inventory || [];
+            const economia = { money: dbUser.money || 0, bank: dbUser.bank || 0 };
+            res.render('inventario', { bot: client.user, user: req.user, inventory, economy: economia });
+        } catch (err) {
+            res.redirect('/dashboard');
+        }
     });
 
     // --- RUTA: SELECCIÓN LEADERBOARD ---

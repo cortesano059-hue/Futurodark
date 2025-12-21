@@ -41,7 +41,10 @@ body {
 .nav-center { display: flex; gap: 25px; position: absolute; left: 50%; transform: translateX(-50%); }
 .nav-link { color: var(--text-dim); text-decoration: none; font-weight: 500; transition: color 0.2s; }
 .nav-link:hover { color: white; }
-.nav-link.active { color: var(--accent); font-weight: bold; }
+.nav-link.active { color: #ff4d4f; /* red accent for active link */ font-weight: 600; }
+.topnav .nav-link.active {
+    background: transparent;
+}
 
 .nav-right { display: flex; align-items: center; gap: 20px; }
 .nav-action { display: flex; align-items: center; gap: 6px; color: var(--text-dim); text-decoration: none; font-weight: 600; transition: 0.2s; }
@@ -178,3 +181,19 @@ h1 { margin: 10px 0 15px 0; font-size: 26px; font-weight: 800; }
     .cmd-row { flex-direction: column; align-items: flex-start; gap: 10px; }
     .col-desc { border-left: none; padding-left: 0; padding-top: 8px; border-top: 1px solid var(--border); }
 }
+
+/* Shop & Inventory styles */
+.shop-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:14px; }
+.shop-card { display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding:12px; border-radius:8px; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); }
+.shop-icon img { width:48px; height:48px; object-fit:cover; border-radius:6px }
+.shop-body { width:100%; }
+.shop-title { font-weight:700; }
+.shop-desc { color:var(--text-dim); font-size:13px }
+.shop-footer { display:flex; justify-content:space-between; align-items:center; width:100%; margin-top:8px }
+.price { font-weight:700 }
+
+.inventory-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:12px }
+.inv-card { display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px; border-radius:8px; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); }
+.inv-icon { width:56px; height:56px; border-radius:8px; object-fit:cover }
+.inv-name { font-weight:700 }
+.inv-count { color:var(--text-dim); font-size:13px }

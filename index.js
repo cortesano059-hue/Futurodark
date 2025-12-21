@@ -30,4 +30,9 @@ const client = new MyClient(); // ← crea una instancia del cliente
 
 keepAlive(client); // ← inicia el servidor web
 
-client.start(); // ← inicia el bot
+// Inicia el bot sólo si no se indica lo contrario via SKIP_BOT
+if (process.env.SKIP_BOT !== 'true') {
+	client.start(); // ← inicia el bot
+} else {
+	console.log('SKIP_BOT=true, omitido inicio del bot para pruebas del servidor web');
+}

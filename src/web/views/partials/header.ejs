@@ -23,9 +23,9 @@
         </div>
 
         <div class="nav-center">
-            <a href="/comandos" class="nav-link">Comandos</a>
-            <a href="/dashboard" class="nav-link">Dashboard</a>
-            <a href="/leaderboard" class="nav-link">Leaderboard</a>
+            <a href="/comandos" class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/comandos')) ? 'active' : '' %>">Comandos</a>
+            <a href="/dashboard" class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/dashboard')) ? 'active' : '' %>">Dashboard</a>
+            <a href="/leaderboard" class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/leaderboard')) ? 'active' : '' %>">Leaderboard</a>
         </div>
 
         <div class="nav-right">

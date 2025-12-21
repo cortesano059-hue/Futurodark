@@ -1,0 +1,36 @@
+<%- include('partials/header') %>
+
+    <div class="main-wrapper">
+        <div class="glass-panel">
+            <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                <h1 style="margin:0; font-size:22px;">Tienda</h1>
+                <div style="color:var(--text-dim);">Saldo: <strong><%= economy.money %></strong> monedas</div>
+            </div>
+
+            <div class="panel-body">
+                <main class="content-area shop-grid">
+                    <% if(items && items.length){ %>
+                        <% items.forEach(item => { %>
+                            <div class="shop-card">
+                                <div class="shop-icon"><img src="<%= item.icon || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt=""></div>
+                                <div class="shop-body">
+                                    <div class="shop-title"><%= item.name %></div>
+                                    <div class="shop-desc"><%= item.description %></div>
+                                </div>
+                                <div class="shop-footer">
+                                    <div class="price"><%= item.price %> <span class="coin">🪙</span></div>
+                                    <button class="btn btn-primary buy-btn" data-item="<%= item.id %>">Comprar</button>
+                                </div>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <p>No hay artículos disponibles.</p>
+                    <% } %>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/shop.js"></script>
+
+<%- include('partials/footer') %>
