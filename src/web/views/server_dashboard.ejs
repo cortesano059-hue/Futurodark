@@ -103,27 +103,27 @@
 
                                 <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de bienvenida</label>
                                 <select id="cfg-welcome" class="eco-input">
-                                    <option value="">— Ninguno —</option>
-                                    <% (channels || []).forEach(c => { %>
-                                        <option value="<%= c.id %>"><%= c.name %></option>
-                                    <% }) %>
-                                </select>
+                                        <option value=""></option>
+                                        <% (channels || []).forEach(c => { %>
+                                            <option value="<%= c.id %>"><%= c.name %></option>
+                                        <% }) %>
+                                    </select>
 
                                 <label style="margin-top:12px; font-size:13px; color:var(--dim);">Canal de salida</label>
                                 <select id="cfg-leave" class="eco-input">
-                                    <option value="">— Ninguno —</option>
-                                    <% (channels || []).forEach(c => { %>
-                                        <option value="<%= c.id %>"><%= c.name %></option>
-                                    <% }) %>
-                                </select>
+                                        <option value=""></option>
+                                        <% (channels || []).forEach(c => { %>
+                                            <option value="<%= c.id %>"><%= c.name %></option>
+                                        <% }) %>
+                                    </select>
                             </div>
 
                             <div style="flex:1; min-width:240px;">
                                 <label style="font-size:13px; color:var(--dim);">Rol de moderadores</label>
                                 <select id="cfg-mods" class="eco-input">
-                                    <option value="">— Ninguno —</option>
+                                    <option value=""></option>
                                     <% (roles || []).forEach(r => { %>
-                                        <option value="<%= r.id %>"><%= r.name %></option>
+                                        <option value="<%= r.id %>" style="color:<%= r.color %>">@<%= r.name %></option>
                                     <% }) %>
                                 </select>
 

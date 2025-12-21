@@ -248,9 +248,9 @@ module.exports = (client) => {
                 .map(c => ({ id: c.id, name: c.name || (c.topic ? c.topic : c.id) })) : [];
 
             const roles = guild.roles && guild.roles.cache ? guild.roles.cache
-                .filter(r => r.id !== guild.id)
+                .filter(r => r.id !== guild.id && !r.managed && r.name !== '@everyone')
                 .sort((a, b) => (b.position || 0) - (a.position || 0))
-                .map(r => ({ id: r.id, name: r.name })) : [];
+                .map(r => ({ id: r.id, name: r.name, color: r.hexColor || '#999' })) : [];
 
             res.render('server_dashboard', { 
                 bot: client.user, 
