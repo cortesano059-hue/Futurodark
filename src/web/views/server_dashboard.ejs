@@ -48,9 +48,10 @@
                                 <td>
                                     <div style="display:flex; align-items:center; gap:10px;">
                                         <img src="<%= u.avatarUrl %>" style="width:32px; border-radius:50%;">
+                                        <div>
+                                            <div style="font-size:13px; font-weight:600;"><%= u.displayName %></div>
+                                            <div style="font-size:10px; color:var(--dim);"><%= u.userId %></div>
                                         </div>
-
-                                        <script>
                                     </div>
                                 </td>
                                 <td><span class="val-pill" style="color:#2ecc71;">$<%= u.money.toLocaleString() %></span></td>
