@@ -152,3 +152,29 @@ h1 { margin: 10px 0 15px 0; font-size: 26px; font-weight: 800; }
     .app-container { height: auto; flex-direction: column; }
     .content-area { padding: 12px; }
 }
+
+/* Commands page styles (moved from commands.ejs) */
+.main-wrapper { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+.glass-panel { background: rgba(30,33,36,0.85); border: 1px solid var(--border); border-radius: 12px; padding: 40px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); backdrop-filter: blur(8px); position: relative; overflow: hidden; }
+.glass-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+.panel-body { display: flex; gap: 35px; margin-top: 20px; }
+.sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+.cat-btn { background: transparent; border: none; color: var(--text-dim); padding: 12px 15px; text-align: left; cursor: pointer; font-size: 14px; font-weight: 700; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; }
+.cat-btn:hover { background: rgba(255,255,255,0.03); color: white; }
+.cat-btn.active { background: var(--accent); color: white; box-shadow: 0 6px 18px rgba(255,71,87,0.12); }
+.badge { background: rgba(0,0,0,0.25); padding: 4px 8px; border-radius: 10px; font-size: 12px; }
+.content-area { flex: 1; }
+.search-bar { background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; color: var(--text-main); width: 100%; margin-bottom: 18px; font-size: 14px; }
+.cmd-row { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 12px; display:flex; align-items:center; gap: 24px; transition: 0.18s; }
+.cmd-row:hover { border-color: rgba(255,255,255,0.08); background: rgba(255,71,87,0.03); transform: translateX(4px); border-left: 4px solid var(--accent); }
+.col-name { width: 200px; color: var(--accent); font-weight: 800; font-family: 'Consolas', monospace; font-size: 15px; }
+.col-desc { flex: 1; color: var(--text-dim); font-size: 14px; border-left: 1px solid var(--border); padding-left: 20px; line-height: 1.4; }
+.hidden { display: none !important; }
+.empty-state { display:none; text-align:center; padding: 50px; color: var(--text-dim); }
+
+@media (max-width: 768px) {
+    .panel-body { flex-direction: column; }
+    .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding-bottom: 10px; }
+    .cmd-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .col-desc { border-left: none; padding-left: 0; padding-top: 8px; border-top: 1px solid var(--border); }
+}
